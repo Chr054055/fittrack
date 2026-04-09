@@ -188,7 +188,7 @@ const SUPABASE_URL = 'https://fmrluoadshvwndbolkwo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_i3tgxHPy0bTisxzvTK21HA_XhGZvP2f';
 // ==============================================
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let entries = [];
 let currentExercise = 'All';
@@ -197,7 +197,7 @@ let chart = null;
 
 // ---- AUTH ----
 async function checkAuth() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
   if (session) {
     showApp(session.user);
   } else {
@@ -219,7 +219,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
   if (!email) return;
   const status = document.getElementById('loginStatus');
   status.textContent = 'Sending...';
-  const { error } = await supabase.auth.signInWithOtp({
+  const { error } = await db.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: window.location.href }
   });
@@ -227,11 +227,11 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await db.auth.signOut();
   location.reload();
 });
 
-supabase.auth.onAuthStateChange((event, session) => {
+db.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN' && session) showApp(session.user);
 });
 

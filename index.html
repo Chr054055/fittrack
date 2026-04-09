@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitTrack — Personal Fitness Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel-2: #334155;
+    --accent: #38bdf8; --accent-2: #22d3ee;
+    --good: #4ade80; --bad: #f87171;
+    --text: #f1f5f9; --muted: #94a3b8; --border: #334155;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: var(--text); min-height: 100vh; padding: 16px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .tagline { color: var(--muted); font-size: 0.85rem; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .user-email { color: var(--muted); font-size: 0.8rem; }
+  button, select, input { font-family: inherit; font-size: 0.9rem; }
+  .btn {
+    background: var(--accent); color: #0f172a; border: none;
+    padding: 9px 14px; border-radius: 8px; cursor: pointer; font-weight: 600;
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(56,189,248,0.3); }
+  .btn.ghost { background: var(--panel-2); color: var(--text); }
+  .btn.danger { background: var(--bad); color: #fff; }
+  .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 360px 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px;
+  }
+  .card h2 { font-size: 1rem; margin-bottom: 14px; color: var(--accent-2); }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block; font-size: 0.8rem; color: var(--muted);
+    margin-bottom: 5px; font-weight: 500;
+  }
+  .field input, .field select {
+    width: 100%; padding: 9px 11px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 7px; color: var(--text); outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpis {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    margin-bottom: 16px;
+  }
+  @media (min-width: 600px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 14px; border-radius: 10px;
+  }
+  .kpi .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi .value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
+  .kpi .delta { font-size: 0.75rem; margin-top: 2px; }
+  .delta.up { color: var(--good); }
+  .delta.down { color: var(--bad); }
+  .chart-wrap { position: relative; height: 300px; margin-bottom: 16px; }
+  .log-list {
+    max-height: 320px; overflow-y: auto;
+    border-top: 1px solid var(--border); padding-top: 10px;
+  }
+  .log-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 4px; border-bottom: 1px solid var(--border); font-size: 0.85rem;
+  }
+  .log-item .meta { color: var(--muted); font-size: 0.75rem; }
+  .log-item button {
+    background: transparent; border: none; color: var(--bad);
+    cursor: pointer; font-size: 1rem;
+  }
+  .empty { color: var(--muted); text-align: center; padding: 30px 10px; font-size: 0.9rem; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tab {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+  }
+  .tab.active { background: var(--accent); color: #0f172a; border-color: var(--accent); font-weight: 600; }
+  .status { font-size: 0.75rem; color: var(--muted); text-align: right; margin-top: 8px; }
+  .status.saved { color: var(--good); }
+  .login-wrap {
+    max-width: 400px; margin: 80px auto; text-align: center;
+  }
+  .login-wrap .card { padding: 32px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-wrap">
+  <div class="card">
+    <h1 style="margin-bottom:8px">💪 FitTrack</h1>
+    <div class="tagline" style="margin-bottom:20px">Sign in to access your data on any device</div>
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com">
+    </div>
+    <button class="btn" id="loginBtn" style="width:100%">Send Magic Link</button>
+    <div class="status" id="loginStatus" style="text-align:center;margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="wrap hidden" id="app">
+  <header>
+    <div>
+      <h1>💪 FitTrack</h1>
+      <div class="tagline">Your personal fitness progress tracker</div>
+    </div>
+    <div class="actions">
+      <span class="user-email" id="userEmail"></span>
+      <button class="btn ghost" id="exportBtn">Export</button>
+      <button class="btn ghost" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>➕ Log Entry</h2>
+      <div class="field">
+        <label>Exercise</label>
+        <input list="exerciseList" id="exercise" placeholder="e.g. Press Ups" autocomplete="off">
+        <datalist id="exerciseList">
+          <option value="Press Ups"><option value="Pull Ups"><option value="Squats">
+          <option value="Plank"><option value="Running"><option value="Bench Press">
+          <option value="Deadlift"><option value="Sit Ups">
+        </datalist>
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="date">
+      </div>
+      <div class="row2">
+        <div class="field"><label>Reps</label><input type="number" id="reps" min="0" step="1" placeholder="0"></div>
+        <div class="field"><label>Sets</label><input type="number" id="sets" min="0" step="1" placeholder="1"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Weight (kg)</label><input type="number" id="weight" min="0" step="0.5" placeholder="0"></div>
+        <div class="field"><label>Duration (sec)</label><input type="number" id="duration" min="0" step="1" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Notes</label><input type="text" id="notes" placeholder="Optional"></div>
+      <button class="btn" id="addBtn" style="width:100%">Add Entry</button>
+      <div class="status" id="status">Ready</div>
+    </div>
+
+    <div class="card">
+      <h2>📈 Progress Chart</h2>
+      <div class="tabs" id="exerciseTabs"></div>
+      <div class="tabs" id="metricTabs">
+        <div class="tab active" data-metric="volume">Volume</div>
+        <div class="tab" data-metric="reps">Total Reps</div>
+        <div class="tab" data-metric="weight">Max Weight</div>
+        <div class="tab" data-metric="duration">Duration</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      <h2 style="margin-top:8px">📝 Recent Entries</h2>
+      <div class="log-list" id="logList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ EDIT THESE TWO LINES ============
+const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY-HERE';
+// ==============================================
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let entries = [];
+let currentExercise = 'All';
+let currentMetric = 'volume';
+let chart = null;
+
+// ---- AUTH ----
+async function checkAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    showApp(session.user);
+  } else {
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+}
+
+async function showApp(user) {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('userEmail').textContent = user.email;
+  await loadData();
+  render();
+}
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) return;
+  const status = document.getElementById('loginStatus');
+  status.textContent = 'Sending...';
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.href }
+  });
+  status.textContent = error ? 'Error: ' + error.message : '✓ Check your email for the magic link';
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) showApp(session.user);
+});
+
+// ---- DATA ----
+async function loadData() {
+  const { data, error } = await supabase
+    .from('entries').select('*').order('date', { ascending: true });
+  if (error) { setStatus('Load error: ' + error.message, false); return; }
+  entries = data || [];
+  setStatus('Loaded ' + entries.length + ' entries', true);
+}
+
+async function addEntry(entry) {
+  const { data, error } = await supabase.from('entries').insert(entry).select().single();
+  if (error) { setStatus('Save failed', false); return null; }
+  entries.push(data);
+  setStatus('Saved ✓', true);
+  return data;
+}
+
+async function deleteEntry(id) {
+  const { error } = await supabase.from('entries').delete().eq('id', id);
+  if (error) { setStatus('Delete failed', false); return; }
+  entries = entries.filter(e => e.id !== id);
+}
+
+function setStatus(msg, ok) {
+  const s = document.getElementById('status');
+  s.textContent = msg;
+  s.className = 'status' + (ok ? ' saved' : '');
+}
+
+// ---- FORM ----
+document.getElementById('date').value = new Date().toISOString().slice(0,10);
+
+document.getElementById('addBtn').addEventListener('click', async () => {
+  const exercise = document.getElementById('exercise').value.trim();
+  const date = document.getElementById('date').value;
+  if (!exercise || !date) { setStatus('Enter exercise + date', false); return; }
+  const entry = {
+    exercise, date,
+    reps: +document.getElementById('reps').value || 0,
+    sets: +document.getElementById('sets').value || 1,
+    weight: +document.getElementById('weight').value || 0,
+    duration: +document.getElementById('duration').value || 0,
+    notes: document.getElementById('notes').value.trim() || null
+  };
+  const saved = await addEntry(entry);
+  if (saved) {
+    ['reps','sets','weight','duration','notes'].forEach(id => document.getElementById(id).value = '');
+    render();
+  }
+});
+
+// ---- METRIC ----
+function getMetricValue(e, metric) {
+  switch (metric) {
+    case 'volume': return (e.reps || 0) * (e.sets || 1) * Math.max(e.weight || 1, 1);
+    case 'reps': return (e.reps || 0) * (e.sets || 1);
+    case 'weight': return e.weight || 0;
+    case 'duration': return e.duration || 0;
+  }
+}
+
+// ---- KPIs ----
+function renderKPIs() {
+  const kpis = document.getElementById('kpis');
+  const total = entries.length;
+  const unique = new Set(entries.map(e => e.exercise)).size;
+  const days = new Set(entries.map(e => e.date));
+  let streak = 0;
+  let d = new Date();
+  while (days.has(d.toISOString().slice(0,10))) { streak++; d.setDate(d.getDate() - 1); }
+  const now = new Date();
+  const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
+  const twoWeekAgo = new Date(now); twoWeekAgo.setDate(now.getDate() - 14);
+  const thisWeek = entries.filter(e => new Date(e.date) >= weekAgo)
+    .reduce((s,e) => s + getMetricValue(e,'volume'), 0);
+  const lastWeek = entries.filter(e => {
+    const d = new Date(e.date);
+    return d >= twoWeekAgo && d < weekAgo;
+  }).reduce((s,e) => s + getMetricValue(e,'volume'), 0);
+  const delta = lastWeek > 0 ? ((thisWeek-lastWeek)/lastWeek*100) : (thisWeek > 0 ? 100 : 0);
+  const deltaClass = delta >= 0 ? 'up' : 'down';
+  const deltaSym = delta >= 0 ? '▲' : '▼';
+  kpis.innerHTML = `
+    <div class="kpi"><div class="label">Total Sessions</div><div class="value">${total}</div></div>
+    <div class="kpi"><div class="label">Exercises Tracked</div><div class="value">${unique}</div></div>
+    <div class="kpi"><div class="label">Current Streak</div><div class="value">${streak}d 🔥</div></div>
+    <div class="kpi">
+      <div class="label">Week Volume</div>
+      <div class="value">${Math.round(thisWeek).toLocaleString()}</div>
+      <div class="delta ${deltaClass}">${deltaSym} ${Math.abs(delta).toFixed(0)}% vs last</div>
+    </div>`;
+}
+
+function renderExerciseTabs() {
+  const tabs = document.getElementById('exerciseTabs');
+  const exercises = ['All', ...new Set(entries.map(e => e.exercise))];
+  tabs.innerHTML = exercises.map(ex =>
+    `<div class="tab ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</div>`
+  ).join('');
+  tabs.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => { currentExercise = t.dataset.ex; render(); });
+  });
+}
+
+function renderChart() {
+  const filtered = currentExercise === 'All' ? entries : entries.filter(e => e.exercise === currentExercise);
+  const byDate = {};
+  filtered.forEach(e => {
+    const v = getMetricValue(e, currentMetric);
+    byDate[e.date] = (byDate[e.date] || 0) + v;
+  });
+  const dates = Object.keys(byDate).sort();
+  const values = dates.map(d => byDate[d]);
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: currentExercise + ' — ' + currentMetric,
+        data: values,
+        borderColor: '#38bdf8',
+        backgroundColor: 'rgba(56,189,248,0.15)',
+        fill: true, tension: 0.3, pointRadius: 4,
+        pointBackgroundColor: '#22d3ee'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#f1f5f9' } } },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderLog() {
+  const list = document.getElementById('logList');
+  const filtered = currentExercise === 'All' ? entries : entries.filter(e => e.exercise === currentExercise);
+  const sorted = [...filtered].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 30);
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="empty">No entries yet. Log your first workout! 💪</div>';
+    return;
+  }
+  list.innerHTML = sorted.map(e => {
+    const bits = [];
+    if (e.reps) bits.push(e.reps + ' reps');
+    if (e.sets && e.sets > 1) bits.push('× ' + e.sets + ' sets');
+    if (e.weight) bits.push('@ ' + e.weight + 'kg');
+    if (e.duration) bits.push(e.duration + 's');
+    return `<div class="log-item">
+      <div>
+        <strong>${e.exercise}</strong> — ${bits.join(' ')}
+        <div class="meta">${e.date}${e.notes ? ' • ' + e.notes : ''}</div>
+      </div>
+      <button data-id="${e.id}" title="Delete">✕</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', async () => {
+      await deleteEntry(+b.dataset.id);
+      render();
+    });
+  });
+}
+
+document.querySelectorAll('#metricTabs .tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('#metricTabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    currentMetric = t.dataset.metric;
+    renderChart();
+  });
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'fittrack-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+});
+
+function render() { renderKPIs(); renderExerciseTabs(); renderChart(); renderLog(); }
+
+checkAuth();
+</script>
+</body>
+</html>

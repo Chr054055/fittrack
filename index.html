@@ -245,7 +245,7 @@ async function loadData() {
 }
 
 async function addEntry(entry) {
-  const { data, error } = await supabase.from('entries').insert(entry).select().single();
+  const { data, error } = await db.from('entries').insert(entry).select().single();
   if (error) { setStatus('Save failed', false); return null; }
   entries.push(data);
   setStatus('Saved ✓', true);
@@ -253,7 +253,7 @@ async function addEntry(entry) {
 }
 
 async function deleteEntry(id) {
-  const { error } = await supabase.from('entries').delete().eq('id', id);
+  const { error } = await db.from('entries').delete().eq('id', id);
   if (error) { setStatus('Delete failed', false); return; }
   entries = entries.filter(e => e.id !== id);
 }

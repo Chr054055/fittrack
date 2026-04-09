@@ -3,181 +3,309 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FitTrack — Personal Fitness Tracker</title>
+<title>FitTrack — Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #0f172a; --panel: #1e293b; --panel-2: #334155;
-    --accent: #38bdf8; --accent-2: #22d3ee;
-    --good: #4ade80; --bad: #f87171;
-    --text: #f1f5f9; --muted: #94a3b8; --border: #334155;
+    --bg: #f9f9f9;
+    --surface: #ffffff;
+    --surface-hover: #f2f2f2;
+    --border: #e5e5e5;
+    --border-strong: #d3d3d3;
+    --text: #0f0f0f;
+    --text-muted: #606060;
+    --text-light: #909090;
+    --primary: #065fd4;
+    --primary-hover: #0356c9;
+    --primary-bg: #def1ff;
+    --good: #008a00;
+    --good-bg: #e6f4ea;
+    --bad: #cc0000;
+    --bad-bg: #fce8e6;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-hover: 0 1px 3px rgba(0,0,0,0.1);
   }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-    color: var(--text); min-height: 100vh; padding: 16px;
+  html, body {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1200px; margin: 0 auto; }
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  body { min-height: 100vh; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
-  h1 {
-    font-size: 1.6rem;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 18px; font-weight: 500; color: var(--text);
   }
-  .tagline { color: var(--muted); font-size: 0.85rem; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .user-email { color: var(--muted); font-size: 0.8rem; }
-  button, select, input { font-family: inherit; font-size: 0.9rem; }
+  .brand-logo {
+    width: 28px; height: 28px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 14px;
+  }
+  .topbar-actions { display: flex; align-items: center; gap: 12px; }
+  .user-email { color: var(--text-muted); font-size: 13px; display: none; }
+  @media (min-width: 700px) { .user-email { display: inline; } }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+  .page-header { margin-bottom: 24px; }
+  .page-title {
+    font-size: 24px; font-weight: 400; color: var(--text); letter-spacing: -0.3px;
+  }
+  .page-subtitle {
+    font-size: 14px; color: var(--text-muted); margin-top: 4px;
+  }
+
+  button, select, input { font-family: inherit; font-size: 14px; }
   .btn {
-    background: var(--accent); color: #0f172a; border: none;
-    padding: 9px 14px; border-radius: 8px; cursor: pointer; font-weight: 600;
-    transition: transform 0.1s, box-shadow 0.2s;
+    background: var(--primary); color: white; border: none;
+    padding: 10px 16px; border-radius: 18px; cursor: pointer;
+    font-weight: 500; font-size: 14px; transition: background 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
   }
-  .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(56,189,248,0.3); }
-  .btn.ghost { background: var(--panel-2); color: var(--text); }
-  .btn.danger { background: var(--bad); color: #fff; }
-  .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
-  @media (min-width: 900px) { .grid { grid-template-columns: 360px 1fr; } }
+  .btn:hover { background: var(--primary-hover); }
+  .btn.ghost {
+    background: transparent; color: var(--text); border: 1px solid var(--border-strong);
+  }
+  .btn.ghost:hover { background: var(--surface-hover); }
+  .btn.text {
+    background: transparent; color: var(--primary); border: none; padding: 8px 12px;
+  }
+  .btn.text:hover { background: var(--primary-bg); border-radius: 18px; }
+
   .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; box-shadow: var(--shadow);
   }
-  .card h2 { font-size: 1rem; margin-bottom: 14px; color: var(--accent-2); }
-  .field { margin-bottom: 12px; }
+  .card-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .card-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+
+  .kpis {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;
+  }
+  @media (min-width: 700px) { .kpis { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; box-shadow: var(--shadow);
+    transition: box-shadow 0.15s;
+  }
+  .kpi:hover { box-shadow: var(--shadow-hover); }
+  .kpi-label {
+    font-size: 13px; color: var(--text-muted); font-weight: 400; margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-size: 32px; font-weight: 400; color: var(--text);
+    line-height: 1.1; letter-spacing: -0.5px;
+  }
+  .kpi-delta {
+    font-size: 12px; margin-top: 8px; display: inline-flex; align-items: center;
+    gap: 3px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+  }
+  .kpi-delta.up { color: var(--good); background: var(--good-bg); }
+  .kpi-delta.down { color: var(--bad); background: var(--bad-bg); }
+  .kpi-delta.neutral { color: var(--text-muted); background: var(--surface-hover); }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 960px) { .grid { grid-template-columns: 340px 1fr; gap: 24px; } }
+
+  .field { margin-bottom: 16px; }
   .field label {
-    display: block; font-size: 0.8rem; color: var(--muted);
-    margin-bottom: 5px; font-weight: 500;
+    display: block; font-size: 12px; color: var(--text-muted);
+    margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px;
   }
   .field input, .field select {
-    width: 100%; padding: 9px 11px;
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: 7px; color: var(--text); outline: none;
+    width: 100%; padding: 10px 12px; background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    color: var(--text); outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .field input:focus, .field select:focus { border-color: var(--accent); }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .kpis {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-    margin-bottom: 16px;
+  .field input:focus, .field select:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 3px rgba(6,95,212,0.12);
   }
-  @media (min-width: 600px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
-  .kpi {
-    background: var(--panel); border: 1px solid var(--border);
-    padding: 14px; border-radius: 10px;
+  .field input::placeholder { color: var(--text-light); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .tabs {
+    display: flex; gap: 0; margin-bottom: 20px;
+    border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none;
   }
-  .kpi .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .kpi .value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
-  .kpi .delta { font-size: 0.75rem; margin-top: 2px; }
-  .delta.up { color: var(--good); }
-  .delta.down { color: var(--bad); }
-  .chart-wrap { position: relative; height: 300px; margin-bottom: 16px; }
-  .log-list {
-    max-height: 320px; overflow-y: auto;
-    border-top: 1px solid var(--border); padding-top: 10px;
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    background: transparent; border: none; color: var(--text-muted);
+    padding: 12px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
+    white-space: nowrap; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: color 0.15s, border-color 0.15s;
   }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+  .pill-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .pill-tab {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    color: var(--text); padding: 6px 14px; border-radius: 16px;
+    cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s;
+  }
+  .pill-tab:hover { background: var(--surface-hover); }
+  .pill-tab.active {
+    background: var(--text); color: var(--surface); border-color: var(--text);
+  }
+
+  .chart-wrap { position: relative; height: 320px; margin-bottom: 8px; }
+
+  .log-section { margin-top: 32px; }
+  .log-list { max-height: 380px; overflow-y: auto; }
   .log-item {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 4px; border-bottom: 1px solid var(--border); font-size: 0.85rem;
+    padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px;
   }
-  .log-item .meta { color: var(--muted); font-size: 0.75rem; }
-  .log-item button {
-    background: transparent; border: none; color: var(--bad);
-    cursor: pointer; font-size: 1rem;
+  .log-item:last-child { border-bottom: none; }
+  .log-main { flex: 1; min-width: 0; }
+  .log-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .log-details { font-size: 13px; color: var(--text-muted); }
+  .log-meta { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .log-delete {
+    background: transparent; border: none; color: var(--text-muted);
+    cursor: pointer; width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: background 0.15s, color 0.15s;
   }
-  .empty { color: var(--muted); text-align: center; padding: 30px 10px; font-size: 0.9rem; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-  .tab {
-    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
-    padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.8rem;
+  .log-delete:hover { background: var(--bad-bg); color: var(--bad); }
+
+  .empty {
+    color: var(--text-muted); text-align: center;
+    padding: 48px 20px; font-size: 14px;
   }
-  .tab.active { background: var(--accent); color: #0f172a; border-color: var(--accent); font-weight: 600; }
-  .status { font-size: 0.75rem; color: var(--muted); text-align: right; margin-top: 8px; }
+  .empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.4; }
+
+  .status { font-size: 12px; color: var(--text-muted); margin-top: 12px; min-height: 16px; }
   .status.saved { color: var(--good); }
-  .login-wrap {
-    max-width: 400px; margin: 80px auto; text-align: center;
+  .status.error { color: var(--bad); }
+
+  .login-wrap { max-width: 400px; margin: 80px auto; padding: 0 20px; }
+  .login-wrap .card { padding: 40px 32px; text-align: center; }
+  .login-wrap .brand {
+    justify-content: center; margin-bottom: 8px; font-size: 22px;
   }
-  .login-wrap .card { padding: 32px; }
+  .login-wrap .brand-logo { width: 36px; height: 36px; font-size: 18px; }
+  .login-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 28px; }
+  .login-wrap .field { text-align: left; }
+  .login-wrap .btn { width: 100%; justify-content: center; padding: 12px; }
+
   .hidden { display: none !important; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .wrap, .topbar { animation: fadeIn 0.3s ease-out; }
 </style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
 <div id="loginScreen" class="login-wrap">
   <div class="card">
-    <h1 style="margin-bottom:8px">💪 FitTrack</h1>
-    <div class="tagline" style="margin-bottom:20px">Sign in to access your data on any device</div>
+    <div class="brand">
+      <div class="brand-logo">F</div>
+      FitTrack
+    </div>
+    <div class="login-subtitle">Sign in to access your fitness data</div>
     <div class="field">
       <label>Email address</label>
       <input type="email" id="loginEmail" placeholder="you@example.com">
     </div>
-    <button class="btn" id="loginBtn" style="width:100%">Send Magic Link</button>
-    <div class="status" id="loginStatus" style="text-align:center;margin-top:12px"></div>
+    <button class="btn" id="loginBtn">Send magic link</button>
+    <div class="status" id="loginStatus"></div>
   </div>
 </div>
 
-<!-- APP -->
-<div class="wrap hidden" id="app">
-  <header>
-    <div>
-      <h1>💪 FitTrack</h1>
-      <div class="tagline">Your personal fitness progress tracker</div>
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">F</div>
+      FitTrack
     </div>
-    <div class="actions">
+    <div class="topbar-actions">
       <span class="user-email" id="userEmail"></span>
       <button class="btn ghost" id="exportBtn">Export</button>
-      <button class="btn ghost" id="logoutBtn">Logout</button>
+      <button class="btn text" id="logoutBtn">Sign out</button>
     </div>
-  </header>
+  </div>
 
-  <div class="kpis" id="kpis"></div>
-
-  <div class="grid">
-    <div class="card">
-      <h2>➕ Log Entry</h2>
-      <div class="field">
-        <label>Exercise</label>
-        <input list="exerciseList" id="exercise" placeholder="e.g. Press Ups" autocomplete="off">
-        <datalist id="exerciseList">
-          <option value="Press Ups"><option value="Pull Ups"><option value="Squats">
-          <option value="Plank"><option value="Running"><option value="Bench Press">
-          <option value="Deadlift"><option value="Sit Ups">
-        </datalist>
-      </div>
-      <div class="field">
-        <label>Date</label>
-        <input type="date" id="date">
-      </div>
-      <div class="row2">
-        <div class="field"><label>Reps</label><input type="number" id="reps" min="0" step="1" placeholder="0"></div>
-        <div class="field"><label>Sets</label><input type="number" id="sets" min="0" step="1" placeholder="1"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Weight (kg)</label><input type="number" id="weight" min="0" step="0.5" placeholder="0"></div>
-        <div class="field"><label>Duration (sec)</label><input type="number" id="duration" min="0" step="1" placeholder="0"></div>
-      </div>
-      <div class="field"><label>Notes</label><input type="text" id="notes" placeholder="Optional"></div>
-      <button class="btn" id="addBtn" style="width:100%">Add Entry</button>
-      <div class="status" id="status">Ready</div>
+  <div class="wrap">
+    <div class="page-header">
+      <div class="page-title">Fitness analytics</div>
+      <div class="page-subtitle">Track your progress and see improvements over time</div>
     </div>
 
-    <div class="card">
-      <h2>📈 Progress Chart</h2>
-      <div class="tabs" id="exerciseTabs"></div>
-      <div class="tabs" id="metricTabs">
-        <div class="tab active" data-metric="volume">Volume</div>
-        <div class="tab" data-metric="reps">Total Reps</div>
-        <div class="tab" data-metric="weight">Max Weight</div>
-        <div class="tab" data-metric="duration">Duration</div>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Log entry</div>
+        <div class="card-subtitle">Add a new workout session</div>
+
+        <div class="field">
+          <label>Exercise</label>
+          <input list="exerciseList" id="exercise" placeholder="e.g. Press Ups" autocomplete="off">
+          <datalist id="exerciseList">
+            <option value="Press Ups"><option value="Pull Ups"><option value="Squats">
+            <option value="Plank"><option value="Running"><option value="Bench Press">
+            <option value="Deadlift"><option value="Sit Ups">
+          </datalist>
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="date">
+        </div>
+        <div class="row2">
+          <div class="field"><label>Reps</label><input type="number" id="reps" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label>Sets</label><input type="number" id="sets" min="0" step="1" placeholder="1"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Weight (kg)</label><input type="number" id="weight" min="0" step="0.5" placeholder="0"></div>
+          <div class="field"><label>Duration (s)</label><input type="number" id="duration" min="0" step="1" placeholder="0"></div>
+        </div>
+        <div class="field"><label>Notes</label><input type="text" id="notes" placeholder="Optional"></div>
+        <button class="btn" id="addBtn" style="width:100%;justify-content:center">Add entry</button>
+        <div class="status" id="status"></div>
       </div>
-      <div class="chart-wrap"><canvas id="chart"></canvas></div>
-      <h2 style="margin-top:8px">📝 Recent Entries</h2>
-      <div class="log-list" id="logList"></div>
+
+      <div class="card">
+        <div class="card-title">Progress over time</div>
+        <div class="card-subtitle">Visualise improvements per exercise and metric</div>
+
+        <div class="pill-tabs" id="exerciseTabs"></div>
+        <div class="tabs" id="metricTabs">
+          <div class="tab active" data-metric="volume">Volume</div>
+          <div class="tab" data-metric="reps">Total reps</div>
+          <div class="tab" data-metric="weight">Max weight</div>
+          <div class="tab" data-metric="duration">Duration</div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+
+        <div class="log-section">
+          <div class="card-title" style="margin-bottom:12px">Recent entries</div>
+          <div class="log-list" id="logList"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -195,7 +323,6 @@ let currentExercise = 'All';
 let currentMetric = 'volume';
 let chart = null;
 
-// ---- AUTH ----
 async function checkAuth() {
   const { data: { session } } = await db.auth.getSession();
   if (session) {
@@ -219,11 +346,18 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
   if (!email) return;
   const status = document.getElementById('loginStatus');
   status.textContent = 'Sending...';
+  status.className = 'status';
   const { error } = await db.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: window.location.href }
   });
-  status.textContent = error ? 'Error: ' + error.message : '✓ Check your email for the magic link';
+  if (error) {
+    status.textContent = 'Error: ' + error.message;
+    status.className = 'status error';
+  } else {
+    status.textContent = '✓ Check your email for the magic link';
+    status.className = 'status saved';
+  }
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
@@ -235,7 +369,6 @@ db.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN' && session) showApp(session.user);
 });
 
-// ---- DATA ----
 async function loadData() {
   const { data, error } = await db
     .from('entries').select('*').order('date', { ascending: true });
@@ -261,10 +394,9 @@ async function deleteEntry(id) {
 function setStatus(msg, ok) {
   const s = document.getElementById('status');
   s.textContent = msg;
-  s.className = 'status' + (ok ? ' saved' : '');
+  s.className = 'status ' + (ok ? 'saved' : 'error');
 }
 
-// ---- FORM ----
 document.getElementById('date').value = new Date().toISOString().slice(0,10);
 
 document.getElementById('addBtn').addEventListener('click', async () => {
@@ -286,7 +418,6 @@ document.getElementById('addBtn').addEventListener('click', async () => {
   }
 });
 
-// ---- METRIC ----
 function getMetricValue(e, metric) {
   switch (metric) {
     case 'volume': return (e.reps || 0) * (e.sets || 1) * Math.max(e.weight || 1, 1);
@@ -296,7 +427,6 @@ function getMetricValue(e, metric) {
   }
 }
 
-// ---- KPIs ----
 function renderKPIs() {
   const kpis = document.getElementById('kpis');
   const total = entries.length;
@@ -315,16 +445,31 @@ function renderKPIs() {
     return d >= twoWeekAgo && d < weekAgo;
   }).reduce((s,e) => s + getMetricValue(e,'volume'), 0);
   const delta = lastWeek > 0 ? ((thisWeek-lastWeek)/lastWeek*100) : (thisWeek > 0 ? 100 : 0);
-  const deltaClass = delta >= 0 ? 'up' : 'down';
-  const deltaSym = delta >= 0 ? '▲' : '▼';
+  let deltaClass, deltaSym;
+  if (Math.abs(delta) < 0.5) { deltaClass = 'neutral'; deltaSym = '–'; }
+  else if (delta > 0) { deltaClass = 'up'; deltaSym = '▲'; }
+  else { deltaClass = 'down'; deltaSym = '▼'; }
+
   kpis.innerHTML = `
-    <div class="kpi"><div class="label">Total Sessions</div><div class="value">${total}</div></div>
-    <div class="kpi"><div class="label">Exercises Tracked</div><div class="value">${unique}</div></div>
-    <div class="kpi"><div class="label">Current Streak</div><div class="value">${streak}d 🔥</div></div>
     <div class="kpi">
-      <div class="label">Week Volume</div>
-      <div class="value">${Math.round(thisWeek).toLocaleString()}</div>
-      <div class="delta ${deltaClass}">${deltaSym} ${Math.abs(delta).toFixed(0)}% vs last</div>
+      <div class="kpi-label">Total sessions</div>
+      <div class="kpi-value">${total.toLocaleString()}</div>
+      <div class="kpi-delta neutral">Lifetime</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Exercises tracked</div>
+      <div class="kpi-value">${unique}</div>
+      <div class="kpi-delta neutral">Unique types</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Current streak</div>
+      <div class="kpi-value">${streak}<span style="font-size:16px;color:var(--text-muted);font-weight:400"> day${streak===1?'':'s'}</span></div>
+      <div class="kpi-delta ${streak>0?'up':'neutral'}">${streak>0?'🔥 Active':'Start today'}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Week volume</div>
+      <div class="kpi-value">${Math.round(thisWeek).toLocaleString()}</div>
+      <div class="kpi-delta ${deltaClass}">${deltaSym} ${Math.abs(delta).toFixed(0)}% vs last week</div>
     </div>`;
 }
 
@@ -332,9 +477,9 @@ function renderExerciseTabs() {
   const tabs = document.getElementById('exerciseTabs');
   const exercises = ['All', ...new Set(entries.map(e => e.exercise))];
   tabs.innerHTML = exercises.map(ex =>
-    `<div class="tab ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</div>`
+    `<button class="pill-tab ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</button>`
   ).join('');
-  tabs.querySelectorAll('.tab').forEach(t => {
+  tabs.querySelectorAll('.pill-tab').forEach(t => {
     t.addEventListener('click', () => { currentExercise = t.dataset.ex; render(); });
   });
 }
@@ -357,18 +502,46 @@ function renderChart() {
       datasets: [{
         label: currentExercise + ' — ' + currentMetric,
         data: values,
-        borderColor: '#38bdf8',
-        backgroundColor: 'rgba(56,189,248,0.15)',
-        fill: true, tension: 0.3, pointRadius: 4,
-        pointBackgroundColor: '#22d3ee'
+        borderColor: '#065fd4',
+        backgroundColor: 'rgba(6,95,212,0.08)',
+        fill: true,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#065fd4',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2
       }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#f1f5f9' } } },
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f0f0f',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 12,
+          cornerRadius: 8,
+          displayColors: false,
+          titleFont: { family: 'Roboto', size: 13, weight: '500' },
+          bodyFont: { family: 'Roboto', size: 13 }
+        }
+      },
       scales: {
-        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, beginAtZero: true }
+        x: {
+          ticks: { color: '#606060', font: { family: 'Roboto', size: 12 } },
+          grid: { display: false },
+          border: { color: '#e5e5e5' }
+        },
+        y: {
+          ticks: { color: '#606060', font: { family: 'Roboto', size: 12 } },
+          grid: { color: '#f0f0f0', drawBorder: false },
+          border: { display: false },
+          beginAtZero: true
+        }
       }
     }
   });
@@ -379,24 +552,25 @@ function renderLog() {
   const filtered = currentExercise === 'All' ? entries : entries.filter(e => e.exercise === currentExercise);
   const sorted = [...filtered].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 30);
   if (sorted.length === 0) {
-    list.innerHTML = '<div class="empty">No entries yet. Log your first workout! 💪</div>';
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📊</div>No entries yet. Log your first workout to see your data here.</div>';
     return;
   }
   list.innerHTML = sorted.map(e => {
     const bits = [];
     if (e.reps) bits.push(e.reps + ' reps');
     if (e.sets && e.sets > 1) bits.push('× ' + e.sets + ' sets');
-    if (e.weight) bits.push('@ ' + e.weight + 'kg');
-    if (e.duration) bits.push(e.duration + 's');
+    if (e.weight) bits.push('@ ' + e.weight + ' kg');
+    if (e.duration) bits.push(e.duration + ' s');
     return `<div class="log-item">
-      <div>
-        <strong>${e.exercise}</strong> — ${bits.join(' ')}
-        <div class="meta">${e.date}${e.notes ? ' • ' + e.notes : ''}</div>
+      <div class="log-main">
+        <div class="log-title">${e.exercise}</div>
+        <div class="log-details">${bits.join(' • ') || 'No metrics'}</div>
+        <div class="log-meta">${e.date}${e.notes ? ' • ' + e.notes : ''}</div>
       </div>
-      <button data-id="${e.id}" title="Delete">✕</button>
+      <button class="log-delete" data-id="${e.id}" title="Delete">✕</button>
     </div>`;
   }).join('');
-  list.querySelectorAll('button').forEach(b => {
+  list.querySelectorAll('.log-delete').forEach(b => {
     b.addEventListener('click', async () => {
       await deleteEntry(+b.dataset.id);
       render();

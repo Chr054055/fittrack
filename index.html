@@ -3,311 +3,277 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FitTrack — Analytics</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<title>FitTrack Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #f9f9f9;
-    --surface: #ffffff;
-    --surface-hover: #f2f2f2;
-    --border: #e5e5e5;
-    --border-strong: #d3d3d3;
-    --text: #0f0f0f;
-    --text-muted: #606060;
-    --text-light: #909090;
-    --primary: #065fd4;
-    --primary-hover: #0356c9;
-    --primary-bg: #def1ff;
-    --good: #008a00;
-    --good-bg: #e6f4ea;
-    --bad: #cc0000;
-    --bad-bg: #fce8e6;
-    --shadow: 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-hover: 0 1px 3px rgba(0,0,0,0.1);
-  }
-  html, body {
-    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-  }
-  body { min-height: 100vh; }
+:root{
+  --bg-primary:#0a0a0a;--bg-card:#1a1a1a;--bg-card2:#222;--bg-card3:#2a2a2a;
+  --accent:#7363ff;--accent-dim:rgba(115,99,255,.15);--accent-glow:rgba(115,99,255,.3);
+  --text-primary:#f5f5f5;--text-muted:#888;--text-body:#d5d5d5;--border:#333;
+  --green:#34c7a9;--red:#e65959;--amber:#ffcd38;--blue:#5fa8ff;
+  --sidebar-w:180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Poppins',sans-serif;background:var(--bg-primary);color:var(--text-body);font-size:13px;line-height:1.7}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--bg-primary)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
 
-  .topbar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .brand {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 18px; font-weight: 500; color: var(--text);
-  }
-  .brand-logo {
-    width: 28px; height: 28px;
-    background: var(--primary);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    color: white; font-weight: 700; font-size: 14px;
-  }
-  .topbar-actions { display: flex; align-items: center; gap: 12px; }
-  .user-email { color: var(--text-muted); font-size: 13px; display: none; }
-  @media (min-width: 700px) { .user-email { display: inline; } }
+/* Sidebar */
+.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:var(--bg-card2);border-right:1px solid var(--border);z-index:100;display:flex;flex-direction:column;padding:24px 0}
+.sidebar-brand{padding:0 22px 22px;border-bottom:1px solid var(--border)}
+.brand-row{display:flex;align-items:center;gap:10px}
+.brand-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:grid;place-items:center;color:#fff;font-size:14px;box-shadow:0 0 20px var(--accent-glow)}
+.brand-name{font-size:15px;font-weight:700;color:var(--text-primary);line-height:1.1}
+.brand-sub{font-size:9px;color:var(--accent);font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-top:3px}
+.sidebar-nav{padding:16px 0;flex:1}
+.sidebar-nav a{display:flex;align-items:center;gap:12px;padding:11px 22px;color:var(--text-muted);text-decoration:none;font-size:12px;font-weight:500;border-left:2px solid transparent;transition:.2s;cursor:pointer}
+.sidebar-nav a:hover{color:var(--text-primary);background:rgba(255,255,255,.02)}
+.sidebar-nav a.active{color:var(--accent);background:var(--accent-dim);border-left-color:var(--accent)}
+.sidebar-nav a i{width:14px;font-size:12px}
+.sidebar-foot{padding:16px 22px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted)}
+.sidebar-foot b{color:var(--text-primary);display:block;margin-bottom:2px;font-size:11px;word-break:break-all}
 
-  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+/* Main */
+.main{margin-left:var(--sidebar-w);padding:24px 28px 60px;max-width:1600px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;gap:16px;flex-wrap:wrap}
+.topbar h1{font-size:22px;font-weight:600;color:var(--text-primary);letter-spacing:-.3px}
+.topbar h1 span{color:var(--accent)}
+.topbar .meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text-body);padding:9px 14px;font-family:inherit;font-size:11px;font-weight:500;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.2s;text-transform:uppercase;letter-spacing:.05em}
+.btn:hover{border-color:var(--accent);color:var(--text-primary)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#8373ff;box-shadow:0 0 16px var(--accent-glow)}
 
-  .page-header { margin-bottom: 24px; }
-  .page-title {
-    font-size: 24px; font-weight: 400; color: var(--text); letter-spacing: -0.3px;
-  }
-  .page-subtitle {
-    font-size: 14px; color: var(--text-muted); margin-top: 4px;
-  }
+.section{margin-bottom:32px;scroll-margin-top:20px}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.section-head h2{font-size:15px;font-weight:600;color:var(--text-primary);text-transform:uppercase;letter-spacing:.05em}
+.section-head .hint{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
 
-  button, select, input { font-family: inherit; font-size: 14px; }
-  .btn {
-    background: var(--primary); color: white; border: none;
-    padding: 10px 16px; border-radius: 18px; cursor: pointer;
-    font-weight: 500; font-size: 14px; transition: background 0.15s;
-    display: inline-flex; align-items: center; gap: 6px;
-  }
-  .btn:hover { background: var(--primary-hover); }
-  .btn.ghost {
-    background: transparent; color: var(--text); border: 1px solid var(--border-strong);
-  }
-  .btn.ghost:hover { background: var(--surface-hover); }
-  .btn.text {
-    background: transparent; color: var(--primary); border: none; padding: 8px 12px;
-  }
-  .btn.text:hover { background: var(--primary-bg); border-radius: 18px; }
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative;overflow:hidden;transition:.2s}
+.kpi:hover{border-color:var(--accent);transform:translateY(-2px)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:.6}
+.kpi .lbl{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.kpi .lbl i{color:var(--accent);font-size:11px}
+.kpi .val{font-size:26px;font-weight:700;color:var(--text-primary);line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.kpi .val em{font-style:normal;color:var(--accent);font-size:15px;margin-left:4px}
+.kpi .sub{font-size:10px;color:var(--text-muted);margin-top:8px;display:flex;align-items:center;gap:4px}
+.kpi .sub.up{color:var(--green)}
+.kpi .sub.down{color:var(--red)}
 
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 24px; box-shadow: var(--shadow);
-  }
-  .card-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-  .card-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+/* Panels */
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.panel .ph{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.panel h3{font-size:13px;font-weight:600;color:var(--text-primary);text-transform:uppercase;letter-spacing:.05em}
+.panel .desc{font-size:10px;color:var(--text-muted);margin-bottom:16px;text-transform:uppercase;letter-spacing:.05em}
+.row{display:grid;gap:16px;margin-bottom:16px}
+.r-2{grid-template-columns:1fr 1.8fr}
+@media(max-width:900px){.r-2{grid-template-columns:1fr}}
+.cwrap{position:relative;height:320px}
 
-  .kpis {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;
-  }
-  @media (min-width: 700px) { .kpis { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
-  .kpi {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 20px; box-shadow: var(--shadow);
-    transition: box-shadow 0.15s;
-  }
-  .kpi:hover { box-shadow: var(--shadow-hover); }
-  .kpi-label {
-    font-size: 13px; color: var(--text-muted); font-weight: 400; margin-bottom: 8px;
-  }
-  .kpi-value {
-    font-size: 32px; font-weight: 400; color: var(--text);
-    line-height: 1.1; letter-spacing: -0.5px;
-  }
-  .kpi-delta {
-    font-size: 12px; margin-top: 8px; display: inline-flex; align-items: center;
-    gap: 3px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
-  }
-  .kpi-delta.up { color: var(--good); background: var(--good-bg); }
-  .kpi-delta.down { color: var(--bad); background: var(--bad-bg); }
-  .kpi-delta.neutral { color: var(--text-muted); background: var(--surface-hover); }
+/* Form */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;color:var(--text-muted);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.08em}
+.field input{width:100%;padding:10px 12px;background:var(--bg-card2);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);outline:none;font-family:inherit;font-size:12px;transition:.2s}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.field input::placeholder{color:var(--text-muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-  .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
-  @media (min-width: 960px) { .grid { grid-template-columns: 340px 1fr; gap: 24px; } }
+/* Tabs */
+.chip-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.chip{background:var(--bg-card2);border:1px solid var(--border);color:var(--text-muted);padding:5px 12px;font-family:inherit;font-size:10px;font-weight:500;border-radius:4px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;transition:.2s}
+.chip:hover{border-color:var(--accent);color:var(--text-primary)}
+.chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 
-  .field { margin-bottom: 16px; }
-  .field label {
-    display: block; font-size: 12px; color: var(--text-muted);
-    margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px;
-  }
-  .field input, .field select {
-    width: 100%; padding: 10px 12px; background: var(--surface);
-    border: 1px solid var(--border-strong); border-radius: 8px;
-    color: var(--text); outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  .field input:focus, .field select:focus {
-    border-color: var(--primary); box-shadow: 0 0 0 3px rgba(6,95,212,0.12);
-  }
-  .field input::placeholder { color: var(--text-light); }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Log table */
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--border)}
+th{color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:.05em;font-size:9px}
+td{color:var(--text-body)}
+td b{color:var(--text-primary);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:rgba(255,255,255,.02)}
+.log-wrap{max-height:380px;overflow-y:auto}
+.del-btn{background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:4px 8px;border-radius:4px;transition:.2s}
+.del-btn:hover{color:var(--red);background:rgba(230,89,89,.1)}
+.tag{display:inline-block;padding:3px 8px;border-radius:4px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;background:var(--accent-dim);color:var(--accent)}
 
-  .tabs {
-    display: flex; gap: 0; margin-bottom: 20px;
-    border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none;
-  }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tab {
-    background: transparent; border: none; color: var(--text-muted);
-    padding: 12px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
-    white-space: nowrap; border-bottom: 2px solid transparent;
-    margin-bottom: -1px; transition: color 0.15s, border-color 0.15s;
-  }
-  .tab:hover { color: var(--text); }
-  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+.empty{padding:40px 22px;border:1px dashed var(--border);border-radius:8px;font-size:11px;color:var(--text-muted);text-align:center}
+.empty b{color:var(--accent);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
+.empty i{font-size:24px;color:var(--text-muted);margin-bottom:10px;display:block}
 
-  .pill-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  .pill-tab {
-    background: var(--surface); border: 1px solid var(--border-strong);
-    color: var(--text); padding: 6px 14px; border-radius: 16px;
-    cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s;
-  }
-  .pill-tab:hover { background: var(--surface-hover); }
-  .pill-tab.active {
-    background: var(--text); color: var(--surface); border-color: var(--text);
-  }
+.status{font-size:10px;color:var(--text-muted);margin-top:10px;text-transform:uppercase;letter-spacing:.05em;min-height:14px}
+.status.saved{color:var(--green)}
+.status.error{color:var(--red)}
 
-  .chart-wrap { position: relative; height: 320px; margin-bottom: 8px; }
+/* Login */
+.login-wrap{max-width:380px;margin:80px auto;padding:0 20px}
+.login-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:36px 32px;position:relative;overflow:hidden}
+.login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);box-shadow:0 0 20px var(--accent-glow)}
+.login-brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
+.login-brand .brand-icon{width:40px;height:40px;font-size:18px}
+.login-brand-txt{text-align:left}
+.login-brand .brand-name{font-size:18px}
+.login-subtitle{color:var(--text-muted);font-size:11px;margin-bottom:28px;text-align:center;text-transform:uppercase;letter-spacing:.1em}
 
-  .log-section { margin-top: 32px; }
-  .log-list { max-height: 380px; overflow-y: auto; }
-  .log-item {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px;
-  }
-  .log-item:last-child { border-bottom: none; }
-  .log-main { flex: 1; min-width: 0; }
-  .log-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
-  .log-details { font-size: 13px; color: var(--text-muted); }
-  .log-meta { font-size: 12px; color: var(--text-light); margin-top: 2px; }
-  .log-delete {
-    background: transparent; border: none; color: var(--text-muted);
-    cursor: pointer; width: 32px; height: 32px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; transition: background 0.15s, color 0.15s;
-  }
-  .log-delete:hover { background: var(--bad-bg); color: var(--bad); }
+.hidden{display:none!important}
 
-  .empty {
-    color: var(--text-muted); text-align: center;
-    padding: 48px 20px; font-size: 14px;
-  }
-  .empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.4; }
+/* Mobile */
+@media(max-width:760px){
+  :root{--sidebar-w:0px}
+  .sidebar{transform:translateX(-100%);width:240px;transition:.3s}
+  .sidebar.open{transform:translateX(0);width:240px}
+  .main{margin-left:0;padding:16px}
+  .mobile-menu-btn{display:flex!important}
+  .topbar h1{font-size:18px}
+}
+.mobile-menu-btn{display:none;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:9px 12px;border-radius:6px;cursor:pointer;font-size:14px;align-items:center}
 
-  .status { font-size: 12px; color: var(--text-muted); margin-top: 12px; min-height: 16px; }
-  .status.saved { color: var(--good); }
-  .status.error { color: var(--bad); }
-
-  .login-wrap { max-width: 400px; margin: 80px auto; padding: 0 20px; }
-  .login-wrap .card { padding: 40px 32px; text-align: center; }
-  .login-wrap .brand {
-    justify-content: center; margin-bottom: 8px; font-size: 22px;
-  }
-  .login-wrap .brand-logo { width: 36px; height: 36px; font-size: 18px; }
-  .login-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 28px; }
-  .login-wrap .field { text-align: left; }
-  .login-wrap .btn { width: 100%; justify-content: center; padding: 12px; }
-
-  .hidden { display: none !important; }
-
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  .wrap, .topbar { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.main{animation:fadeIn .3s ease-out}
 </style>
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
 <div id="loginScreen" class="login-wrap">
-  <div class="card">
-    <div class="brand">
-      <div class="brand-logo">F</div>
-      FitTrack
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-icon"><i class="fa-solid fa-dumbbell"></i></div>
+      <div class="login-brand-txt">
+        <div class="brand-name">FitTrack</div>
+        <div class="brand-sub">Analytics</div>
+      </div>
     </div>
-    <div class="login-subtitle">Sign in to access your fitness data</div>
+    <div class="login-subtitle">Sign in to access your data</div>
     <div class="field">
       <label>Email address</label>
       <input type="email" id="loginEmail" placeholder="you@example.com">
     </div>
-    <button class="btn" id="loginBtn">Send magic link</button>
-    <div class="status" id="loginStatus"></div>
+    <button class="btn primary" id="loginBtn" style="width:100%;justify-content:center;padding:12px"><i class="fa-solid fa-paper-plane"></i> Send magic link</button>
+    <div class="status" id="loginStatus" style="text-align:center"></div>
   </div>
 </div>
 
+<!-- APP -->
 <div id="app" class="hidden">
-  <div class="topbar">
-    <div class="brand">
-      <div class="brand-logo">F</div>
-      FitTrack
-    </div>
-    <div class="topbar-actions">
-      <span class="user-email" id="userEmail"></span>
-      <button class="btn ghost" id="exportBtn">Export</button>
-      <button class="btn text" id="logoutBtn">Sign out</button>
-    </div>
-  </div>
-
-  <div class="wrap">
-    <div class="page-header">
-      <div class="page-title">Fitness analytics</div>
-      <div class="page-subtitle">Track your progress and see improvements over time</div>
-    </div>
-
-    <div class="kpis" id="kpis"></div>
-
-    <div class="grid">
-      <div class="card">
-        <div class="card-title">Log entry</div>
-        <div class="card-subtitle">Add a new workout session</div>
-
-        <div class="field">
-          <label>Exercise</label>
-          <input list="exerciseList" id="exercise" placeholder="e.g. Press Ups" autocomplete="off">
-          <datalist id="exerciseList">
-            <option value="Press Ups"><option value="Pull Ups"><option value="Squats">
-            <option value="Plank"><option value="Running"><option value="Bench Press">
-            <option value="Deadlift"><option value="Sit Ups">
-          </datalist>
-        </div>
-        <div class="field">
-          <label>Date</label>
-          <input type="date" id="date">
-        </div>
-        <div class="row2">
-          <div class="field"><label>Reps</label><input type="number" id="reps" min="0" step="1" placeholder="0"></div>
-          <div class="field"><label>Sets</label><input type="number" id="sets" min="0" step="1" placeholder="1"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Weight (kg)</label><input type="number" id="weight" min="0" step="0.5" placeholder="0"></div>
-          <div class="field"><label>Duration (s)</label><input type="number" id="duration" min="0" step="1" placeholder="0"></div>
-        </div>
-        <div class="field"><label>Notes</label><input type="text" id="notes" placeholder="Optional"></div>
-        <button class="btn" id="addBtn" style="width:100%;justify-content:center">Add entry</button>
-        <div class="status" id="status"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Progress over time</div>
-        <div class="card-subtitle">Visualise improvements per exercise and metric</div>
-
-        <div class="pill-tabs" id="exerciseTabs"></div>
-        <div class="tabs" id="metricTabs">
-          <div class="tab active" data-metric="volume">Volume</div>
-          <div class="tab" data-metric="reps">Total reps</div>
-          <div class="tab" data-metric="weight">Max weight</div>
-          <div class="tab" data-metric="duration">Duration</div>
-        </div>
-        <div class="chart-wrap"><canvas id="chart"></canvas></div>
-
-        <div class="log-section">
-          <div class="card-title" style="margin-bottom:12px">Recent entries</div>
-          <div class="log-list" id="logList"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-row">
+        <div class="brand-icon"><i class="fa-solid fa-dumbbell"></i></div>
+        <div>
+          <div class="brand-name">FitTrack</div>
+          <div class="brand-sub">Analytics</div>
         </div>
       </div>
     </div>
-  </div>
+    <nav class="sidebar-nav">
+      <a class="active" data-target="overview"><i class="fa-solid fa-chart-line"></i> Overview</a>
+      <a data-target="log"><i class="fa-solid fa-plus"></i> Log Entry</a>
+      <a data-target="progress"><i class="fa-solid fa-arrow-trend-up"></i> Progress</a>
+      <a data-target="history"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+    </nav>
+    <div class="sidebar-foot">
+      <b id="userEmail">—</b>
+      Signed in
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1>Fitness <span>Analytics</span></h1>
+        <div class="meta" id="dataRangeMeta">Track progress · See improvements over time</div>
+      </div>
+      <div class="actions">
+        <button class="mobile-menu-btn" id="menuBtn"><i class="fa-solid fa-bars"></i></button>
+        <button class="btn" id="exportBtn"><i class="fa-solid fa-download"></i> Export</button>
+        <button class="btn" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+      </div>
+    </div>
+
+    <!-- Overview / KPIs -->
+    <section class="section" id="overview">
+      <div class="section-head">
+        <h2>Overview</h2>
+        <span class="hint">Lifetime metrics</span>
+      </div>
+      <div class="kpis" id="kpis"></div>
+    </section>
+
+    <!-- Log + Progress -->
+    <section class="section" id="log">
+      <div class="section-head">
+        <h2>Log &amp; Progress</h2>
+        <span class="hint">Add entry · Visualise trends</span>
+      </div>
+      <div class="row r-2">
+        <div class="panel">
+          <div class="ph">
+            <h3><i class="fa-solid fa-plus" style="color:var(--accent);margin-right:6px"></i>Log entry</h3>
+          </div>
+          <div class="desc">Add a new workout session</div>
+
+          <div class="field">
+            <label>Exercise</label>
+            <input list="exerciseList" id="exercise" placeholder="e.g. Press Ups" autocomplete="off">
+            <datalist id="exerciseList">
+              <option value="Press Ups"><option value="Pull Ups"><option value="Squats">
+              <option value="Plank"><option value="Running"><option value="Bench Press">
+              <option value="Deadlift"><option value="Sit Ups">
+            </datalist>
+          </div>
+          <div class="field"><label>Date</label><input type="date" id="date"></div>
+          <div class="row2">
+            <div class="field"><label>Reps</label><input type="number" id="reps" min="0" step="1" placeholder="0"></div>
+            <div class="field"><label>Sets</label><input type="number" id="sets" min="0" step="1" placeholder="1"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Weight (kg)</label><input type="number" id="weight" min="0" step="0.5" placeholder="0"></div>
+            <div class="field"><label>Duration (s)</label><input type="number" id="duration" min="0" step="1" placeholder="0"></div>
+          </div>
+          <div class="field"><label>Notes</label><input type="text" id="notes" placeholder="Optional"></div>
+          <button class="btn primary" id="addBtn" style="width:100%;justify-content:center;padding:11px"><i class="fa-solid fa-circle-plus"></i> Add entry</button>
+          <div class="status" id="status"></div>
+        </div>
+
+        <div class="panel" id="progress">
+          <div class="ph">
+            <h3><i class="fa-solid fa-arrow-trend-up" style="color:var(--accent);margin-right:6px"></i>Progress over time</h3>
+          </div>
+          <div class="desc">Filter by exercise and metric</div>
+          <div class="chip-row" id="exerciseTabs"></div>
+          <div class="chip-row" id="metricTabs">
+            <button class="chip active" data-metric="volume">Volume</button>
+            <button class="chip" data-metric="reps">Total Reps</button>
+            <button class="chip" data-metric="weight">Max Weight</button>
+            <button class="chip" data-metric="duration">Duration</button>
+          </div>
+          <div class="cwrap"><canvas id="chart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- History table -->
+    <section class="section" id="history">
+      <div class="section-head">
+        <h2>Recent History</h2>
+        <span class="hint">Last 30 entries</span>
+      </div>
+      <div class="panel">
+        <div class="log-wrap" id="logList"></div>
+      </div>
+    </section>
+  </main>
 </div>
 
 <script>
@@ -315,6 +281,7 @@
 const SUPABASE_URL = 'https://fmrluoadshvwndbolkwo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_i3tgxHPy0bTisxzvTK21HA_XhGZvP2f';
 // ==============================================
+
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -325,9 +292,8 @@ let chart = null;
 
 async function checkAuth() {
   const { data: { session } } = await db.auth.getSession();
-  if (session) {
-    showApp(session.user);
-  } else {
+  if (session) showApp(session.user);
+  else {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
   }
@@ -351,18 +317,12 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     email,
     options: { emailRedirectTo: window.location.href }
   });
-  if (error) {
-    status.textContent = 'Error: ' + error.message;
-    status.className = 'status error';
-  } else {
-    status.textContent = '✓ Check your email for the magic link';
-    status.className = 'status saved';
-  }
+  if (error) { status.textContent = 'Error: ' + error.message; status.className = 'status error'; }
+  else { status.textContent = '✓ Check your email'; status.className = 'status saved'; }
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await db.auth.signOut();
-  location.reload();
+  await db.auth.signOut(); location.reload();
 });
 
 db.auth.onAuthStateChange((event, session) => {
@@ -370,8 +330,7 @@ db.auth.onAuthStateChange((event, session) => {
 });
 
 async function loadData() {
-  const { data, error } = await db
-    .from('entries').select('*').order('date', { ascending: true });
+  const { data, error } = await db.from('entries').select('*').order('date', { ascending: true });
   if (error) { setStatus('Load error: ' + error.message, false); return; }
   entries = data || [];
   setStatus('Loaded ' + entries.length + ' entries', true);
@@ -445,31 +404,31 @@ function renderKPIs() {
     return d >= twoWeekAgo && d < weekAgo;
   }).reduce((s,e) => s + getMetricValue(e,'volume'), 0);
   const delta = lastWeek > 0 ? ((thisWeek-lastWeek)/lastWeek*100) : (thisWeek > 0 ? 100 : 0);
-  let deltaClass, deltaSym;
-  if (Math.abs(delta) < 0.5) { deltaClass = 'neutral'; deltaSym = '–'; }
-  else if (delta > 0) { deltaClass = 'up'; deltaSym = '▲'; }
-  else { deltaClass = 'down'; deltaSym = '▼'; }
+  let deltaClass = '', deltaIcon = 'fa-minus';
+  if (Math.abs(delta) < 0.5) { deltaClass = ''; deltaIcon = 'fa-minus'; }
+  else if (delta > 0) { deltaClass = 'up'; deltaIcon = 'fa-arrow-up'; }
+  else { deltaClass = 'down'; deltaIcon = 'fa-arrow-down'; }
 
   kpis.innerHTML = `
     <div class="kpi">
-      <div class="kpi-label">Total sessions</div>
-      <div class="kpi-value">${total.toLocaleString()}</div>
-      <div class="kpi-delta neutral">Lifetime</div>
+      <div class="lbl"><i class="fa-solid fa-layer-group"></i>Total Sessions</div>
+      <div class="val">${total.toLocaleString()}</div>
+      <div class="sub">Lifetime entries logged</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Exercises tracked</div>
-      <div class="kpi-value">${unique}</div>
-      <div class="kpi-delta neutral">Unique types</div>
+      <div class="lbl"><i class="fa-solid fa-shapes"></i>Exercises Tracked</div>
+      <div class="val">${unique}</div>
+      <div class="sub">Unique movement types</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Current streak</div>
-      <div class="kpi-value">${streak}<span style="font-size:16px;color:var(--text-muted);font-weight:400"> day${streak===1?'':'s'}</span></div>
-      <div class="kpi-delta ${streak>0?'up':'neutral'}">${streak>0?'🔥 Active':'Start today'}</div>
+      <div class="lbl"><i class="fa-solid fa-fire"></i>Current Streak</div>
+      <div class="val">${streak}<em>day${streak===1?'':'s'}</em></div>
+      <div class="sub ${streak>0?'up':''}">${streak>0?'Active training':'Start today'}</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Week volume</div>
-      <div class="kpi-value">${Math.round(thisWeek).toLocaleString()}</div>
-      <div class="kpi-delta ${deltaClass}">${deltaSym} ${Math.abs(delta).toFixed(0)}% vs last week</div>
+      <div class="lbl"><i class="fa-solid fa-chart-column"></i>Week Volume</div>
+      <div class="val">${Math.round(thisWeek).toLocaleString()}</div>
+      <div class="sub ${deltaClass}"><i class="fa-solid ${deltaIcon}"></i> ${Math.abs(delta).toFixed(0)}% vs last week</div>
     </div>`;
 }
 
@@ -477,9 +436,9 @@ function renderExerciseTabs() {
   const tabs = document.getElementById('exerciseTabs');
   const exercises = ['All', ...new Set(entries.map(e => e.exercise))];
   tabs.innerHTML = exercises.map(ex =>
-    `<button class="pill-tab ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</button>`
+    `<button class="chip ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</button>`
   ).join('');
-  tabs.querySelectorAll('.pill-tab').forEach(t => {
+  tabs.querySelectorAll('.chip').forEach(t => {
     t.addEventListener('click', () => { currentExercise = t.dataset.ex; render(); });
   });
 }
@@ -502,15 +461,21 @@ function renderChart() {
       datasets: [{
         label: currentExercise + ' — ' + currentMetric,
         data: values,
-        borderColor: '#065fd4',
-        backgroundColor: 'rgba(6,95,212,0.08)',
+        borderColor: '#7363ff',
+        backgroundColor: (c) => {
+          const ctx = c.chart.ctx;
+          const g = ctx.createLinearGradient(0, 0, 0, 320);
+          g.addColorStop(0, 'rgba(115,99,255,0.35)');
+          g.addColorStop(1, 'rgba(115,99,255,0)');
+          return g;
+        },
         fill: true,
         tension: 0.35,
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 6,
-        pointBackgroundColor: '#065fd4',
-        pointBorderColor: '#ffffff',
+        pointBackgroundColor: '#7363ff',
+        pointBorderColor: '#0a0a0a',
         pointBorderWidth: 2
       }]
     },
@@ -520,25 +485,27 @@ function renderChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0f0f0f',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
+          backgroundColor: '#222',
+          titleColor: '#f5f5f5',
+          bodyColor: '#d5d5d5',
+          borderColor: '#7363ff',
+          borderWidth: 1,
           padding: 12,
-          cornerRadius: 8,
+          cornerRadius: 6,
           displayColors: false,
-          titleFont: { family: 'Roboto', size: 13, weight: '500' },
-          bodyFont: { family: 'Roboto', size: 13 }
+          titleFont: { family: 'Poppins', size: 11, weight: '600' },
+          bodyFont: { family: 'Poppins', size: 11 }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#606060', font: { family: 'Roboto', size: 12 } },
+          ticks: { color: '#888', font: { family: 'Poppins', size: 10 } },
           grid: { display: false },
-          border: { color: '#e5e5e5' }
+          border: { color: '#333' }
         },
         y: {
-          ticks: { color: '#606060', font: { family: 'Roboto', size: 12 } },
-          grid: { color: '#f0f0f0', drawBorder: false },
+          ticks: { color: '#888', font: { family: 'Poppins', size: 10 } },
+          grid: { color: '#222' },
           border: { display: false },
           beginAtZero: true
         }
@@ -552,25 +519,37 @@ function renderLog() {
   const filtered = currentExercise === 'All' ? entries : entries.filter(e => e.exercise === currentExercise);
   const sorted = [...filtered].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 30);
   if (sorted.length === 0) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">📊</div>No entries yet. Log your first workout to see your data here.</div>';
+    list.innerHTML = '<div class="empty"><i class="fa-solid fa-chart-simple"></i><b>No data yet</b>Log your first workout to see entries here</div>';
     return;
   }
-  list.innerHTML = sorted.map(e => {
-    const bits = [];
-    if (e.reps) bits.push(e.reps + ' reps');
-    if (e.sets && e.sets > 1) bits.push('× ' + e.sets + ' sets');
-    if (e.weight) bits.push('@ ' + e.weight + ' kg');
-    if (e.duration) bits.push(e.duration + ' s');
-    return `<div class="log-item">
-      <div class="log-main">
-        <div class="log-title">${e.exercise}</div>
-        <div class="log-details">${bits.join(' • ') || 'No metrics'}</div>
-        <div class="log-meta">${e.date}${e.notes ? ' • ' + e.notes : ''}</div>
-      </div>
-      <button class="log-delete" data-id="${e.id}" title="Delete">✕</button>
-    </div>`;
-  }).join('');
-  list.querySelectorAll('.log-delete').forEach(b => {
+  list.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Exercise</th>
+          <th>Date</th>
+          <th class="n">Reps</th>
+          <th class="n">Sets</th>
+          <th class="n">Weight</th>
+          <th class="n">Duration</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map(e => `
+          <tr>
+            <td><b>${e.exercise}</b>${e.notes ? '<div style="font-size:9px;color:var(--text-muted);margin-top:2px">'+e.notes+'</div>' : ''}</td>
+            <td>${e.date}</td>
+            <td class="n">${e.reps || '—'}</td>
+            <td class="n">${e.sets || '—'}</td>
+            <td class="n">${e.weight ? e.weight+' kg' : '—'}</td>
+            <td class="n">${e.duration ? e.duration+' s' : '—'}</td>
+            <td class="n"><button class="del-btn" data-id="${e.id}" title="Delete"><i class="fa-solid fa-trash"></i></button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+  list.querySelectorAll('.del-btn').forEach(b => {
     b.addEventListener('click', async () => {
       await deleteEntry(+b.dataset.id);
       render();
@@ -578,9 +557,9 @@ function renderLog() {
   });
 }
 
-document.querySelectorAll('#metricTabs .tab').forEach(t => {
+document.querySelectorAll('#metricTabs .chip').forEach(t => {
   t.addEventListener('click', () => {
-    document.querySelectorAll('#metricTabs .tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('#metricTabs .chip').forEach(x => x.classList.remove('active'));
     t.classList.add('active');
     currentMetric = t.dataset.metric;
     renderChart();
@@ -593,6 +572,22 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = url; a.download = 'fittrack-' + new Date().toISOString().slice(0,10) + '.json';
   a.click(); URL.revokeObjectURL(url);
+});
+
+// Sidebar navigation smooth scroll
+document.querySelectorAll('.sidebar-nav a').forEach(a => {
+  a.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-nav a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    const target = document.getElementById(a.dataset.target);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('sidebar').classList.remove('open');
+  });
+});
+
+// Mobile menu toggle
+document.getElementById('menuBtn').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
 });
 
 function render() { renderKPIs(); renderExerciseTabs(); renderChart(); renderLog(); }

@@ -159,7 +159,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <label>Email address</label>
       <input type="email" id="loginEmail" placeholder="you@example.com">
     </div>
-    <button class="btn primary" id="loginBtn" style="width:100%;justify-content:center;padding:12px"><i class="fa-solid fa-paper-plane"></i> Send magic link</button>
+    <button class="btn primary" id="loginBtn" style="width:100%;justify-content:center;padding:12px"><i class="fa-solid fa-paper-plane"></i> Send code</button>
+    <div class="field hidden" id="otpField" style="margin-top:14px">
+      <label>6-digit code from email</label>
+      <input type="text" id="loginOtp" placeholder="123456" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+    </div>
+    <button class="btn primary hidden" id="verifyBtn" style="width:100%;justify-content:center;padding:12px;margin-top:10px"><i class="fa-solid fa-check"></i> Verify &amp; sign in</button>
     <div class="status" id="loginStatus" style="text-align:center"></div>
   </div>
 </div>
@@ -307,6 +312,8 @@ async function showApp(user) {
   render();
 }
 
+let pendingEmail = null;
+
 document.getElementById('loginBtn').addEventListener('click', async () => {
   const email = document.getElementById('loginEmail').value.trim();
   if (!email) return;
@@ -315,10 +322,43 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
   status.className = 'status';
   const { error } = await db.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.href }
+    options: { shouldCreateUser: true }
   });
-  if (error) { status.textContent = 'Error: ' + error.message; status.className = 'status error'; }
-  else { status.textContent = '✓ Check your email'; status.className = 'status saved'; }
+  if (error) {
+    status.textContent = 'Error: ' + error.message;
+    status.className = 'status error';
+  } else {
+    pendingEmail = email;
+    status.textContent = '✓ Code sent — check your email';
+    status.className = 'status saved';
+    document.getElementById('otpField').classList.remove('hidden');
+    document.getElementById('verifyBtn').classList.remove('hidden');
+    document.getElementById('loginOtp').focus();
+  }
+});
+
+document.getElementById('verifyBtn').addEventListener('click', async () => {
+  const token = document.getElementById('loginOtp').value.trim();
+  if (!token || !pendingEmail) return;
+  const status = document.getElementById('loginStatus');
+  status.textContent = 'Verifying...';
+  status.className = 'status';
+  const { data, error } = await db.auth.verifyOtp({
+    email: pendingEmail,
+    token,
+    type: 'email'
+  });
+  if (error) {
+    status.textContent = 'Invalid code: ' + error.message;
+    status.className = 'status error';
+  } else if (data.session) {
+    showApp(data.session.user);
+  }
+});
+
+// Allow Enter key to submit OTP
+document.getElementById('loginOtp').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') document.getElementById('verifyBtn').click();
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {

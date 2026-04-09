@@ -237,7 +237,7 @@ db.auth.onAuthStateChange((event, session) => {
 
 // ---- DATA ----
 async function loadData() {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('entries').select('*').order('date', { ascending: true });
   if (error) { setStatus('Load error: ' + error.message, false); return; }
   entries = data || [];

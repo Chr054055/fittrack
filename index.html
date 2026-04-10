@@ -275,6 +275,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <button class="btn" id="exportBtn"><i class="fa-solid fa-download"></i> Export</button>
         <button class="btn" id="importBtn"><i class="fa-solid fa-upload"></i> Import</button>
         <input type="file" id="importFile" accept=".json" style="display:none">
+        <button class="btn" id="clearBtn"><i class="fa-solid fa-trash-can"></i> Clear Data</button>
         <button class="btn" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
       </div>
     </div>
@@ -780,6 +781,27 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='fittrack-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(u);
 });
 document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('importFile').click());
+let clearArmed=false;
+document.getElementById('clearBtn').addEventListener('click',async()=>{
+  const btn=document.getElementById('clearBtn');
+  if(!clearArmed){
+    clearArmed=true;
+    btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Confirm? All data will be deleted';
+    btn.style.borderColor='var(--red)';btn.style.color='var(--red)';
+    setTimeout(()=>{if(clearArmed){clearArmed=false;btn.innerHTML='<i class="fa-solid fa-trash-can"></i> Clear Data';btn.style.borderColor='';btn.style.color=''}},4000);
+    return;
+  }
+  btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Clearing...';
+  await db.from('playlist_videos').delete().neq('id',0);
+  await db.from('playlists').delete().neq('id',0);
+  await db.from('entries').delete().neq('id',0);
+  await db.from('bodyweight').delete().neq('id',0);
+  entries=[];playlists=[];videos=[];bwEntries=[];
+  clearArmed=false;
+  btn.innerHTML='<i class="fa-solid fa-trash-can"></i> Clear Data';btn.style.borderColor='';btn.style.color='';
+  showToast('All data cleared');
+  render();renderLibrary();
+});
 document.getElementById('importFile').addEventListener('change',async ev=>{
   const file=ev.target.files[0];if(!file)return;
   try{

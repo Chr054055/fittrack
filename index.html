@@ -273,6 +273,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="actions">
         <button class="mobile-menu-btn" id="menuBtn"><i class="fa-solid fa-bars"></i></button>
         <button class="btn" id="exportBtn"><i class="fa-solid fa-download"></i> Export</button>
+        <button class="btn" id="importBtn"><i class="fa-solid fa-upload"></i> Import</button>
+        <input type="file" id="importFile" accept=".json" style="display:none">
         <button class="btn" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
       </div>
     </div>
@@ -776,6 +778,50 @@ document.getElementById('libAccToggle').addEventListener('click',()=>document.ge
 document.getElementById('exportBtn').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify({entries,playlists,videos,bodyweight:bwEntries},null,2)],{type:'application/json'});
   const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='fittrack-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(u);
+});
+document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change',async ev=>{
+  const file=ev.target.files[0];if(!file)return;
+  try{
+    const json=JSON.parse(await file.text());
+    const counts={entries:0,playlists:0,videos:0,bodyweight:0};
+    // Import playlists first (videos reference them)
+    const plMap={};// old id -> new id
+    if(json.playlists&&json.playlists.length){
+      for(const pl of json.playlists){
+        const old=pl.id;
+        const{data,error}=await db.from('playlists').insert({name:pl.name,icon:pl.icon||'fa-solid fa-play'}).select().single();
+        if(!error&&data){plMap[old]=data.id;counts.playlists++}
+      }
+    }
+    // Import videos with remapped playlist_id
+    if(json.videos&&json.videos.length){
+      for(const v of json.videos){
+        const newPlId=plMap[v.playlist_id];
+        if(!newPlId)continue;// skip if parent playlist failed
+        const{error}=await db.from('playlist_videos').insert({playlist_id:newPlId,title:v.title,url:v.url,platform:v.platform||'youtube',notes:v.notes||null,sort_order:v.sort_order||0});
+        if(!error)counts.videos++;
+      }
+    }
+    // Import entries
+    if(json.entries&&json.entries.length){
+      for(const e of json.entries){
+        const{error}=await db.from('entries').insert({exercise:e.exercise,date:e.date,reps:e.reps||0,sets:e.sets||1,weight:e.weight||0,duration:e.duration||0,distance:e.distance||0,notes:e.notes||null});
+        if(!error)counts.entries++;
+      }
+    }
+    // Import bodyweight
+    if(json.bodyweight&&json.bodyweight.length){
+      for(const b of json.bodyweight){
+        const{error}=await db.from('bodyweight').insert({date:b.date,weight:b.weight});
+        if(!error)counts.bodyweight++;
+      }
+    }
+    showToast(`Imported: ${counts.entries} entries, ${counts.playlists} playlists, ${counts.videos} videos, ${counts.bodyweight} weigh-ins`);
+    await Promise.all([loadData(),loadLibrary(),loadBodyweight()]);
+    render();
+  }catch(e){showToast('Import failed: '+e.message)}
+  ev.target.value='';
 });
 document.querySelectorAll('.sidebar-nav a').forEach(a=>a.addEventListener('click',()=>{
   document.querySelectorAll('.sidebar-nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');

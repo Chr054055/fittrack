@@ -123,7 +123,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rec.g .bar>span{background:var(--green)}.rec.r .bar>span{background:var(--red)}
 
 /* Video library */
-.playlist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.playlist-grid{display:flex;flex-direction:column;gap:10px}
 .pl-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:.2s}
 .pl-card:hover{border-color:var(--accent)}
 .pl-head{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);background:var(--bg-card2)}
@@ -150,6 +150,36 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tag{display:inline-block;padding:3px 8px;border-radius:4px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;background:var(--accent-dim);color:var(--accent)}
 .tag.green{background:rgba(52,199,169,.15);color:var(--green)}
 .tag.red{background:rgba(230,89,89,.15);color:var(--red)}
+
+/* Accordion */
+.accordion{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.accordion-toggle{width:100%;background:none;border:none;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:inherit;transition:.2s}
+.accordion-toggle:hover{background:rgba(255,255,255,.02)}
+.accordion-toggle h3{font-size:13px;font-weight:600;color:var(--text-primary);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:8px}
+.accordion-toggle h3 i{color:var(--accent);font-size:12px}
+.accordion-toggle .acc-meta{display:flex;align-items:center;gap:10px}
+.accordion-toggle .acc-hint{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em}
+.accordion-toggle .acc-arrow{color:var(--text-muted);font-size:12px;transition:transform .25s}
+.accordion.open .acc-arrow{transform:rotate(180deg)}
+.accordion-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.accordion.open .accordion-body{max-height:2000px}
+.accordion-inner{padding:0 20px 20px}
+
+/* Collapsible playlist */
+.pl-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:.2s}
+.pl-card:hover{border-color:var(--accent)}
+.pl-head{padding:0;border-bottom:none;background:none}
+.pl-toggle{width:100%;background:var(--bg-card2);border:none;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:inherit;transition:.15s;gap:8px}
+.pl-toggle:hover{background:var(--bg-card3)}
+.pl-toggle .pl-title{font-size:13px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:8px}
+.pl-toggle .pl-title i{color:var(--accent);font-size:12px}
+.pl-toggle .pl-right{display:flex;align-items:center;gap:10px}
+.pl-toggle .pl-count{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.pl-toggle .pl-arrow{color:var(--text-muted);font-size:11px;transition:transform .25s}
+.pl-card.open .pl-arrow{transform:rotate(180deg)}
+.pl-collapse{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.pl-card.open .pl-collapse{max-height:2000px}
+.pl-scroll{max-height:320px;overflow-y:auto}
 
 .empty{padding:40px 22px;border:1px dashed var(--border);border-radius:8px;font-size:11px;color:var(--text-muted);text-align:center}
 .empty b{color:var(--accent);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
@@ -178,7 +208,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .mobile-menu-btn{display:flex!important}
   .topbar h1{font-size:18px}
   .recs{grid-template-columns:1fr}
-  .playlist-grid{grid-template-columns:1fr}
 }
 .mobile-menu-btn{display:none;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:9px 12px;border-radius:6px;cursor:pointer;font-size:14px;align-items:center}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
@@ -333,40 +362,52 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <section class="section" id="library">
       <div class="section-head"><h2>Video Library</h2><span class="hint">Workout playlists</span></div>
 
-      <!-- Add playlist -->
-      <div class="row r-2" style="margin-bottom:16px">
-        <div class="panel">
-          <div class="ph"><h3><i class="fa-solid fa-folder-plus" style="color:var(--accent);margin-right:6px"></i>Create playlist</h3></div>
-          <div class="desc">Organise workout videos by category</div>
-          <div class="field"><label>Playlist name</label><input type="text" id="plName" placeholder="e.g. Warm Up"></div>
-          <div class="field">
-            <label>Icon</label>
-            <select id="plIcon">
-              <option value="fa-solid fa-fire">🔥 Warm Up</option>
-              <option value="fa-solid fa-dumbbell">💪 Strength</option>
-              <option value="fa-solid fa-person-running">🏃 Cardio</option>
-              <option value="fa-solid fa-spa">🧘 Flexibility / Cool Down</option>
-              <option value="fa-solid fa-heart-pulse">❤️ HIIT</option>
-              <option value="fa-solid fa-play">▶ General</option>
-            </select>
+      <!-- Accordion: Add Video / Create Playlist -->
+      <div class="accordion" id="libAccordion">
+        <button class="accordion-toggle" id="libAccToggle">
+          <h3><i class="fa-solid fa-circle-plus"></i> Add Video / Create Playlist</h3>
+          <div class="acc-meta">
+            <span class="acc-hint">Expand to manage</span>
+            <i class="fa-solid fa-chevron-down acc-arrow"></i>
           </div>
-          <button class="btn primary" id="addPlBtn" style="width:100%;justify-content:center"><i class="fa-solid fa-plus"></i> Create playlist</button>
-          <div class="status" id="plStatus"></div>
-        </div>
+        </button>
+        <div class="accordion-body">
+          <div class="accordion-inner">
+            <div class="row r-2">
+              <div class="panel" style="border:1px solid var(--border)">
+                <div class="ph"><h3><i class="fa-solid fa-folder-plus" style="color:var(--accent);margin-right:6px"></i>Create playlist</h3></div>
+                <div class="desc">Organise workout videos by category</div>
+                <div class="field"><label>Playlist name</label><input type="text" id="plName" placeholder="e.g. Warm Up"></div>
+                <div class="field">
+                  <label>Icon</label>
+                  <select id="plIcon">
+                    <option value="fa-solid fa-fire">🔥 Warm Up</option>
+                    <option value="fa-solid fa-dumbbell">💪 Strength</option>
+                    <option value="fa-solid fa-person-running">🏃 Cardio</option>
+                    <option value="fa-solid fa-spa">🧘 Flexibility / Cool Down</option>
+                    <option value="fa-solid fa-heart-pulse">❤️ HIIT</option>
+                    <option value="fa-solid fa-play">▶ General</option>
+                  </select>
+                </div>
+                <button class="btn primary" id="addPlBtn" style="width:100%;justify-content:center"><i class="fa-solid fa-plus"></i> Create playlist</button>
+                <div class="status" id="plStatus"></div>
+              </div>
 
-        <!-- Add video -->
-        <div class="panel">
-          <div class="ph"><h3><i class="fa-solid fa-video" style="color:var(--accent);margin-right:6px"></i>Add video</h3></div>
-          <div class="desc">Paste a YouTube, Facebook, or Instagram video URL</div>
-          <div class="field">
-            <label>Playlist</label>
-            <select id="vidPlaylist"></select>
+              <div class="panel" style="border:1px solid var(--border)">
+                <div class="ph"><h3><i class="fa-solid fa-video" style="color:var(--accent);margin-right:6px"></i>Add video</h3></div>
+                <div class="desc">Paste a YouTube, Facebook, or Instagram video URL</div>
+                <div class="field">
+                  <label>Playlist</label>
+                  <select id="vidPlaylist"></select>
+                </div>
+                <div class="field"><label>Video URL</label><input type="url" id="vidUrl" placeholder="https://youtube.com/watch?v=..."></div>
+                <div class="field"><label>Title</label><input type="text" id="vidTitle" placeholder="e.g. 10 Min Full Body Warm Up"></div>
+                <div class="field"><label>Notes (optional)</label><input type="text" id="vidNotes" placeholder="e.g. Good for mornings"></div>
+                <button class="btn primary" id="addVidBtn" style="width:100%;justify-content:center"><i class="fa-solid fa-plus"></i> Add video</button>
+                <div class="status" id="vidStatus"></div>
+              </div>
+            </div>
           </div>
-          <div class="field"><label>Video URL</label><input type="url" id="vidUrl" placeholder="https://youtube.com/watch?v=..."></div>
-          <div class="field"><label>Title</label><input type="text" id="vidTitle" placeholder="e.g. 10 Min Full Body Warm Up"></div>
-          <div class="field"><label>Notes (optional)</label><input type="text" id="vidNotes" placeholder="e.g. Good for mornings"></div>
-          <button class="btn primary" id="addVidBtn" style="width:100%;justify-content:center"><i class="fa-solid fa-plus"></i> Add video</button>
-          <div class="status" id="vidStatus"></div>
         </div>
       </div>
 
@@ -380,7 +421,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 // ============ EDIT THESE TWO LINES ============
 const SUPABASE_URL = 'https://fmrluoadshvwndbolkwo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_i3tgxHPy0bTisxzvTK21HA_XhGZvP2f';
-// ===
+// ==============================================
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -732,43 +773,57 @@ function renderLibrary() {
 
   const grid = document.getElementById('playlistGrid');
   if (playlists.length === 0) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="fa-solid fa-film"></i><b>No playlists yet</b>Create your first playlist above to start adding workout videos</div>';
+    grid.innerHTML = '<div class="empty"><i class="fa-solid fa-film"></i><b>No playlists yet</b>Create your first playlist above to start adding workout videos</div>';
     return;
   }
   grid.innerHTML = playlists.map(pl => {
     const plVids = videos.filter(v => v.playlist_id === pl.id);
-    return `<div class="pl-card">
-      <div class="pl-head">
+    return `<div class="pl-card" data-plcardid="${pl.id}">
+      <button class="pl-toggle" data-pltoggle="${pl.id}">
         <div class="pl-title"><i class="${pl.icon}"></i> ${pl.name}</div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div class="pl-right">
           <span class="pl-count">${plVids.length} video${plVids.length===1?'':'s'}</span>
-          <button class="del-btn" data-plid="${pl.id}" title="Delete playlist"><i class="fa-solid fa-trash"></i></button>
+          <i class="fa-solid fa-chevron-down pl-arrow"></i>
         </div>
-      </div>
-      <div class="pl-body">
-        ${plVids.length === 0
-          ? '<div class="pl-empty">No videos yet — add one above</div>'
-          : plVids.map(v => {
-            const pi = platformIcon(v.platform);
-            return `<div class="vid-item">
-              <div class="vid-icon ${pi.cls}"><i class="${pi.icon}"></i></div>
-              <div class="vid-info">
-                <a href="${v.url}" target="_blank" rel="noopener">${v.title}</a>
-                ${v.notes ? `<div class="vid-notes">${v.notes}</div>` : ''}
-              </div>
-              <div class="vid-actions">
-                <button class="del-btn" data-vidid="${v.id}" title="Remove"><i class="fa-solid fa-xmark"></i></button>
-              </div>
-            </div>`;
-          }).join('')
-        }
+      </button>
+      <div class="pl-collapse">
+        <div class="pl-scroll">
+          ${plVids.length === 0
+            ? '<div class="pl-empty">No videos yet — expand the form above to add one</div>'
+            : plVids.map(v => {
+              const pi = platformIcon(v.platform);
+              return `<div class="vid-item">
+                <div class="vid-icon ${pi.cls}"><i class="${pi.icon}"></i></div>
+                <div class="vid-info">
+                  <a href="${v.url}" target="_blank" rel="noopener">${v.title}</a>
+                  ${v.notes ? `<div class="vid-notes">${v.notes}</div>` : ''}
+                </div>
+                <div class="vid-actions">
+                  <button class="del-btn" data-vidid="${v.id}" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>`;
+            }).join('')
+          }
+        </div>
+        <div style="padding:8px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+          <button class="del-btn" data-plid="${pl.id}" title="Delete playlist" style="font-size:10px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-trash"></i> Delete playlist</button>
+        </div>
       </div>
     </div>`;
   }).join('');
 
+  // Playlist toggle handlers
+  grid.querySelectorAll('[data-pltoggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.pl-card');
+      card.classList.toggle('open');
+    });
+  });
+
   // Delete playlist handlers
   grid.querySelectorAll('[data-plid]').forEach(b => {
-    b.addEventListener('click', async () => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
       const pid = +b.dataset.plid;
       await db.from('playlists').delete().eq('id', pid);
       playlists = playlists.filter(p => p.id !== pid);
@@ -779,7 +834,8 @@ function renderLibrary() {
 
   // Delete video handlers
   grid.querySelectorAll('[data-vidid]').forEach(b => {
-    b.addEventListener('click', async () => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
       const vid = +b.dataset.vidid;
       await db.from('playlist_videos').delete().eq('id', vid);
       videos = videos.filter(v => v.id !== vid);
@@ -787,6 +843,11 @@ function renderLibrary() {
     });
   });
 }
+
+// ---- ACCORDION TOGGLE ----
+document.getElementById('libAccToggle').addEventListener('click', () => {
+  document.getElementById('libAccordion').classList.toggle('open');
+});
 
 // ---- METRIC TABS ----
 document.querySelectorAll('#metricTabs .chip').forEach(t => {

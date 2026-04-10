@@ -123,7 +123,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rec.g .bar>span{background:var(--green)}.rec.r .bar>span{background:var(--red)}
 
 /* Video library */
-.playlist-grid{display:flex;flex-direction:column;gap:10px}
+.playlist-grid{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin}
+.playlist-grid::-webkit-scrollbar{height:6px}
+.playlist-grid::-webkit-scrollbar-track{background:var(--bg-primary);border-radius:3px}
+.playlist-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.pl-card{min-width:280px;max-width:320px;flex-shrink:0}
 .pl-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:.2s}
 .pl-card:hover{border-color:var(--accent)}
 .pl-head{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);background:var(--bg-card2)}
@@ -806,7 +810,7 @@ function renderLibrary() {
           }
         </div>
         <div style="padding:8px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
-          <button class="del-btn" data-plid="${pl.id}" title="Delete playlist" style="font-size:10px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-trash"></i> Delete playlist</button>
+          <button class="del-btn pl-del" data-plid="${pl.id}" title="Delete playlist" style="font-size:10px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-trash"></i> Delete playlist</button>
         </div>
       </div>
     </div>`;
@@ -820,10 +824,27 @@ function renderLibrary() {
     });
   });
 
-  // Delete playlist handlers
-  grid.querySelectorAll('[data-plid]').forEach(b => {
+  // Delete playlist handlers (two-step confirm)
+  grid.querySelectorAll('.pl-del').forEach(b => {
+    let armed = false;
     b.addEventListener('click', async (e) => {
       e.stopPropagation();
+      if (!armed) {
+        armed = true;
+        b.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Confirm delete?';
+        b.style.color = 'var(--red)';
+        b.style.background = 'rgba(230,89,89,.1)';
+        // Reset if not confirmed within 3 seconds
+        setTimeout(() => {
+          if (armed) {
+            armed = false;
+            b.innerHTML = '<i class="fa-solid fa-trash"></i> Delete playlist';
+            b.style.color = '';
+            b.style.background = '';
+          }
+        }, 3000);
+        return;
+      }
       const pid = +b.dataset.plid;
       await db.from('playlists').delete().eq('id', pid);
       playlists = playlists.filter(p => p.id !== pid);

@@ -227,7 +227,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cal-stat{text-align:center}
 .cal-stat .cal-stat-val{font-size:20px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums}
 .cal-stat .cal-stat-lbl{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
-.cal-months{display:flex;gap:2px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin}
+.cal-months{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin}
 .cal-months::-webkit-scrollbar{height:4px}
 .cal-months::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .cal-month{flex-shrink:0}
@@ -238,7 +238,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cal-day.l2{background:rgba(52,199,169,.5)}
 .cal-day.l3{background:rgba(52,199,169,.75)}
 .cal-day.l4{background:var(--green)}
-.cal-day.empty{background:transparent}
+.cal-day.empty{background:transparent;visibility:hidden}
 .cal-legend{display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:flex-end}
 .cal-legend span{font-size:9px;color:var(--text-muted)}
 .cal-legend .cal-day{width:12px;height:12px;cursor:default}
@@ -652,43 +652,52 @@ document.getElementById('calToggleBtn').addEventListener('click',()=>{
 function renderCalendar(){
   const activeDays={};
   entries.forEach(e=>{activeDays[e.date]=(activeDays[e.date]||0)+1});
-  // Build 12 months ending with current month
+  const activeDates=Object.keys(activeDays).sort();
+  if(!activeDates.length){
+    document.getElementById('calStats').innerHTML='<div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">—</div><div class="cal-stat-lbl">No data yet</div></div>';
+    document.getElementById('calGrid').innerHTML='';
+    return;
+  }
+  // Range: from first entry month to current month
+  const firstDate=new Date(activeDates[0]);
   const now=new Date();
+  const today=now.toISOString().slice(0,10);
   const months=[];
-  for(let i=11;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    months.push({year:d.getFullYear(),month:d.getMonth()});
+  let cursor=new Date(firstDate.getFullYear(),firstDate.getMonth(),1);
+  while(cursor<=now){
+    months.push({year:cursor.getFullYear(),month:cursor.getMonth()});
+    cursor.setMonth(cursor.getMonth()+1);
   }
   const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const dayNames=['S','M','T','W','T','F','S'];
-  let totalActive=0,totalDays=0;
+  // Count only days from first entry to today
+  const startDate=new Date(activeDates[0]);
+  const msPerDay=86400000;
+  const totalDays=Math.floor((now-startDate)/msPerDay)+1;
+  const totalActive=new Set(activeDates.filter(d=>d<=today)).size;
+  const restDays=totalDays-totalActive;
+  const pct=totalDays>0?Math.round(totalActive/totalDays*100):0;
+
   const grid=document.getElementById('calGrid');
   grid.innerHTML=months.map(({year,month})=>{
     const daysInMonth=new Date(year,month+1,0).getDate();
     const firstDow=new Date(year,month,1).getDay();
     let cells='';
-    // Blanks for alignment
     for(let b=0;b<firstDow;b++)cells+=`<div class="cal-day empty"></div>`;
     for(let day=1;day<=daysInMonth;day++){
       const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      if(ds>today){cells+=`<div class="cal-day empty"></div>`;continue}
       const count=activeDays[ds]||0;
-      const isPast=new Date(ds)<=now;
-      if(isPast)totalDays++;
-      if(count>0)totalActive++;
       let lvl='';
       if(count>=4)lvl='l4';else if(count>=3)lvl='l3';else if(count>=2)lvl='l2';else if(count>=1)lvl='l1';
-      const future=new Date(ds)>now?'empty':'';
-      cells+=`<div class="cal-day ${lvl} ${future}" title="${ds}: ${count} exercise${count===1?'':'s'}"></div>`;
+      cells+=`<div class="cal-day ${lvl}" title="${ds}: ${count} exercise${count===1?'':'s'}"></div>`;
     }
     return`<div class="cal-month"><div class="cal-month-label">${monthNames[month]} ${year}</div><div class="cal-grid">${cells}</div></div>`;
   }).join('');
-  const restDays=totalDays-totalActive;
-  const pct=totalDays>0?Math.round(totalActive/totalDays*100):0;
+
   document.getElementById('calStats').innerHTML=`
     <div class="cal-stat"><div class="cal-stat-val" style="color:var(--green)">${totalActive}</div><div class="cal-stat-lbl">Days trained</div></div>
     <div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">${restDays}</div><div class="cal-stat-lbl">Rest days</div></div>
     <div class="cal-stat"><div class="cal-stat-val" style="color:var(--accent)">${pct}%</div><div class="cal-stat-lbl">Consistency</div></div>`;
-  // Scroll to current month
   grid.scrollLeft=grid.scrollWidth;
 }
 

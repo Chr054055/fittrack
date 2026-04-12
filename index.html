@@ -745,51 +745,89 @@ document.getElementById('calToggleBtn').addEventListener('click',()=>{
 });
 function renderCalendar(){
   const activeDays={};
-  entries.forEach(e=>{if(e.date)activeDays[e.date]=(activeDays[e.date]||0)+1});
+  const datedEntries=entries.filter(e=>e.date).sort((a,b)=>a.date.localeCompare(b.date));
+  datedEntries.forEach(e=>{activeDays[e.date]=(activeDays[e.date]||0)+1});
 
   const now=new Date();
   const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  const year=today.getFullYear();
-  const month=today.getMonth();
-  const daysInMonth=new Date(year,month+1,0).getDate();
-  const firstDow=new Date(year,month,1).getDay();
+  const currentMonthKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
   const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  let trainedDays=0, restDays=0, futureDays=0;
-  let cells='';
-  for(let b=0;b<firstDow;b++)cells+=`<div class="cal-day empty"></div>`;
-
-  for(let day=1;day<=daysInMonth;day++){
-    const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const count=activeDays[ds]||0;
-    let cls='rest';
-    let label='Not exercised';
-
-    if(ds>todayStr){
-      cls='future';
-      label='Not elapsed';
-      futureDays++;
-    }else if(count>0){
-      cls='trained';
-      label=`Exercised (${count} entr${count===1?'y':'ies'})`;
-      trainedDays++;
-    }else{
-      restDays++;
-    }
-
-    cells+=`<div class="cal-day ${cls}" title="${ds}: ${label}"></div>`;
+  if(!datedEntries.length){
+    document.getElementById('calGrid').innerHTML=`<div class="empty" style="min-width:260px"><i class="fa-solid fa-calendar-days"></i><b>No workout data yet</b>Log an entry to build your calendar</div>`;
+    document.getElementById('calStats').innerHTML=`
+      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--green)">0</div><div class="cal-stat-lbl">Days exercised</div></div>
+      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">0</div><div class="cal-stat-lbl">Days not exercised</div></div>
+      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--accent)">0</div><div class="cal-stat-lbl">Not elapsed</div></div>
+      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--blue)">0%</div><div class="cal-stat-lbl">Tracked period</div></div>`;
+    return;
   }
 
-  const elapsedDays=trainedDays+restDays;
-  const pct=elapsedDays>0?Math.round((trainedDays/elapsedDays)*100):0;
+  const firstTrackedDate=new Date(`${datedEntries[0].date}T00:00:00`);
+  const startYear=firstTrackedDate.getFullYear();
+  const startMonth=firstTrackedDate.getMonth();
+  const endYear=today.getFullYear();
+  const endMonth=today.getMonth();
 
-  document.getElementById('calGrid').innerHTML=`<div class="cal-month"><div class="cal-month-label">${monthNames[month]} ${year}</div><div class="cal-grid">${cells}</div></div>`;
+  let trainedDays=0,restDays=0,futureDays=0,trackedElapsedDays=0;
+  const monthBlocks=[];
+
+  for(let year=startYear,month=startMonth;year<endYear || (year===endYear && month<=endMonth);){
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const firstDow=new Date(year,month,1).getDay();
+    const monthKey=`${year}-${String(month+1).padStart(2,'0')}`;
+    const monthEntries=datedEntries.filter(e=>e.date.startsWith(monthKey));
+    const firstTrackedInMonth=monthEntries.length?monthEntries[0].date:null;
+
+    let cells='';
+    for(let b=0;b<firstDow;b++)cells+=`<div class="cal-day empty"></div>`;
+
+    for(let day=1;day<=daysInMonth;day++){
+      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const count=activeDays[ds]||0;
+      let cls='rest';
+      let label='Not exercised';
+      let includeInStats=false;
+
+      if(ds>todayStr){
+        cls='future';
+        label='Not elapsed';
+        futureDays++;
+      }else if(firstTrackedInMonth && ds<firstTrackedInMonth){
+        cls='empty';
+        label='Before first logged workout this month';
+      }else if(monthKey===currentMonthKey && firstTrackedInMonth===null){
+        cls='empty';
+        label='No logged workouts this month yet';
+      }else if(count>0){
+        cls='trained';
+        label=`Exercised (${count} entr${count===1?'y':'ies'})`;
+        trainedDays++;
+        includeInStats=true;
+      }else{
+        restDays++;
+        includeInStats=true;
+      }
+
+      if(includeInStats)trackedElapsedDays++;
+      cells+=`<div class="cal-day ${cls}" title="${ds}: ${label}"></div>`;
+    }
+
+    monthBlocks.push(`<div class="cal-month"><div class="cal-month-label">${monthNames[month]} ${year}</div><div class="cal-grid">${cells}</div></div>`);
+
+    month++;
+    if(month>11){month=0;year++}
+  }
+
+  const pct=trackedElapsedDays>0?Math.round((trainedDays/trackedElapsedDays)*100):0;
+
+  document.getElementById('calGrid').innerHTML=monthBlocks.join('');
   document.getElementById('calStats').innerHTML=`
     <div class="cal-stat"><div class="cal-stat-val" style="color:var(--green)">${trainedDays}</div><div class="cal-stat-lbl">Days exercised</div></div>
     <div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">${restDays}</div><div class="cal-stat-lbl">Days not exercised</div></div>
     <div class="cal-stat"><div class="cal-stat-val" style="color:var(--accent)">${futureDays}</div><div class="cal-stat-lbl">Not elapsed</div></div>
-    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--blue)">${pct}%</div><div class="cal-stat-lbl">This month</div></div>`;
+    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--blue)">${pct}%</div><div class="cal-stat-lbl">Tracked period</div></div>`;
 }
 
 // ==== TABS & NAV ====

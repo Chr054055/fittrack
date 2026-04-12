@@ -775,15 +775,23 @@ function renderCalendar(){
 
   for(let year=startYear,month=startMonth;year<endYear || (year===endYear && month<=endMonth);){
     const daysInMonth=new Date(year,month+1,0).getDate();
-    const firstDow=new Date(year,month,1).getDay();
     const monthKey=`${year}-${String(month+1).padStart(2,'0')}`;
     const monthEntries=datedEntries.filter(e=>e.date.startsWith(monthKey));
     const firstTrackedInMonth=monthEntries.length?monthEntries[0].date:null;
 
-    let cells='';
-    for(let b=0;b<firstDow;b++)cells+=`<div class="cal-day empty"></div>`;
+    let firstVisibleDay=1;
+    if(firstTrackedInMonth){
+      firstVisibleDay=Number(firstTrackedInMonth.slice(-2));
+    }else if(monthKey===currentMonthKey){
+      firstVisibleDay=1;
+    }
 
-    for(let day=1;day<=daysInMonth;day++){
+    const firstVisibleDow=new Date(year,month,firstVisibleDay).getDay();
+
+    let cells='';
+    for(let b=0;b<firstVisibleDow;b++)cells+=`<div class="cal-day empty"></div>`;
+
+    for(let day=firstVisibleDay;day<=daysInMonth;day++){
       const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const count=activeDays[ds]||0;
       let cls='rest';
@@ -794,9 +802,6 @@ function renderCalendar(){
         cls='future';
         label='Not elapsed';
         futureDays++;
-      }else if(firstTrackedInMonth && ds<firstTrackedInMonth){
-        cls='empty';
-        label='Before first logged workout this month';
       }else if(monthKey===currentMonthKey && firstTrackedInMonth===null){
         cls='empty';
         label='No logged workouts this month yet';

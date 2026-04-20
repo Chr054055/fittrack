@@ -234,11 +234,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cal-month-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;text-align:center;font-weight:500}
 .cal-grid{display:grid;grid-template-columns:repeat(7,14px);gap:2px}
 .cal-day{width:14px;height:14px;border-radius:2px;background:var(--bg-card3)}
-.cal-day.trained{background:var(--green)}
-.cal-day.rest{background:var(--bg-card3);border:1px solid var(--border)}
-.cal-day.future{background:rgba(115,99,255,.18);border:1px solid rgba(115,99,255,.28)}
+.cal-day.l1{background:rgba(52,199,169,.25)}
+.cal-day.l2{background:rgba(52,199,169,.5)}
+.cal-day.l3{background:rgba(52,199,169,.75)}
+.cal-day.l4{background:var(--green)}
 .cal-day.empty{background:transparent;visibility:hidden}
-.cal-legend{display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:flex-end;flex-wrap:wrap}
+.cal-legend{display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:flex-end}
 .cal-legend span{font-size:9px;color:var(--text-muted)}
 .cal-legend .cal-day{width:12px;height:12px;cursor:default}
 
@@ -494,9 +495,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
             </div>
             <div class="cal-months" id="calGrid"></div>
             <div class="cal-legend">
-              <div class="cal-day trained"></div><span>Exercised</span>
-              <div class="cal-day rest"></div><span>Not exercised</span>
-              <div class="cal-day future"></div><span>Not elapsed</span>
+              <span>Less</span>
+              <div class="cal-day"></div>
+              <div class="cal-day l1"></div>
+              <div class="cal-day l2"></div>
+              <div class="cal-day l3"></div>
+              <div class="cal-day l4"></div>
+              <span>More</span>
             </div>
           </div>
           <div class="log-wrap" id="logList" style="margin-top:16px"></div>
@@ -514,51 +519,6 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let entries=[],playlists=[],videos=[],bwEntries=[];
 let currentExercise='All',currentMetric='volume',insightDays=7,prSearchTerm='';
 let chart=null,bwChart=null;
-let isSavingEntry=false;
-
-function normaliseWhitespace(str=''){return String(str).replace(/\s+/g,' ').trim()}
-function toTitleCase(str=''){
-  return normaliseWhitespace(str)
-    .toLowerCase()
-    .split(' ')
-    .filter(Boolean)
-    .map(word=>word.charAt(0).toUpperCase()+word.slice(1))
-    .join(' ')
-}
-function normaliseExerciseName(str=''){return toTitleCase(str)}
-function normaliseExerciseKey(str=''){return normaliseWhitespace(str).toLowerCase()}
-function normaliseEntryShape(entry={}){
-  return {...entry,exercise:normaliseExerciseName(entry.exercise||'')}
-}
-function sameEntry(a,b){
-  return normaliseExerciseKey(a.exercise)===normaliseExerciseKey(b.exercise)
-    && (a.date||'')===(b.date||'')
-    && (+a.reps||0)===(+b.reps||0)
-    && (+a.sets||1)===(+b.sets||1)
-    && (+a.weight||0)===(+b.weight||0)
-    && (+a.duration||0)===(+b.duration||0)
-    && (+a.distance||0)===(+b.distance||0)
-    && normaliseWhitespace(a.notes||'')===normaliseWhitespace(b.notes||'')
-}
-function refreshExerciseSuggestions(){
-  const list=document.getElementById('exerciseList');
-  const defaults=['Press Ups','Pull Ups','Squats','Plank','Bench Press','Deadlift','Sit Ups','Lunges','Burpees','Dips','Rows','Cycling','Running','Swimming','Rowing','Walking','Jump Rope','Elliptical'];
-  const combined=[...defaults,...entries.map(e=>normaliseExerciseName(e.exercise))];
-  const unique=[...new Map(combined.filter(Boolean).map(name=>[normaliseExerciseKey(name),normaliseExerciseName(name)])).values()].sort((a,b)=>a.localeCompare(b));
-  list.innerHTML=unique.map(name=>`<option value="${name}"></option>`).join('');
-}
-function updateExerciseInputFormatting(){
-  const input=document.getElementById('exercise');
-  const formatted=normaliseExerciseName(input.value);
-  if(formatted&&formatted!==input.value)input.value=formatted;
-}
-function setAddButtonState(isBusy){
-  const btn=document.getElementById('addBtn');
-  btn.disabled=!!isBusy;
-  btn.style.opacity=isBusy?'.7':'1';
-  btn.style.pointerEvents=isBusy?'none':'auto';
-  btn.innerHTML=isBusy?'<i class="fa-solid fa-spinner fa-spin"></i> Saving...':'<i class="fa-solid fa-circle-plus"></i> Add entry';
-}
 
 // ==== AUTH ====
 async function checkAuth(){const{data:{session}}=await db.auth.getSession();if(session)showApp(session.user);else{document.getElementById('loginScreen').classList.remove('hidden');document.getElementById('app').classList.add('hidden')}}
@@ -571,34 +531,9 @@ document.getElementById('logoutBtn').addEventListener('click',async()=>{await db
 db.auth.onAuthStateChange((ev,sess)=>{if(ev==='SIGNED_IN'&&sess)showApp(sess.user)});
 
 // ==== DATA ====
-async function loadData(){
-  const{data,error}=await db.from('entries').select('*').order('date',{ascending:true});
-  if(error){setStatus('Load error: '+error.message,false);return}
-  entries=(data||[]).map(normaliseEntryShape);
-  refreshExerciseSuggestions();
-  setStatus('Loaded '+entries.length+' entries',true)
-}
-async function addEntry(entry){
-  const cleanEntry=normaliseEntryShape(entry);
-  const existingMatch=entries.find(e=>sameEntry(e,cleanEntry));
-  if(existingMatch){setStatus('That exact entry already exists',false);return null}
-  let lastError=null;
-  for(let attempt=1;attempt<=2;attempt++){
-    const{data,error}=await db.from('entries').insert(cleanEntry).select().single();
-    if(!error&&data){
-      const saved=normaliseEntryShape(data);
-      entries.push(saved);
-      refreshExerciseSuggestions();
-      setStatus(attempt===1?'Saved ✓':'Saved ✓ (retried)',true);
-      return saved;
-    }
-    lastError=error;
-    if(attempt<2)await new Promise(resolve=>setTimeout(resolve,350));
-  }
-  setStatus('Save failed: '+(lastError?.message||'Unknown error'),false);
-  return null
-}
-async function deleteEntry(id){const{error}=await db.from('entries').delete().eq('id',id);if(!error){entries=entries.filter(e=>e.id!==id);refreshExerciseSuggestions()}}
+async function loadData(){const{data,error}=await db.from('entries').select('*').order('date',{ascending:true});if(error){setStatus('Load error: '+error.message,false);return}entries=data||[];setStatus('Loaded '+entries.length+' entries',true)}
+async function addEntry(entry){const{data,error}=await db.from('entries').insert(entry).select().single();if(error){setStatus('Save failed: '+error.message,false);return null}entries.push(data);setStatus('Saved ✓',true);return data}
+async function deleteEntry(id){const{error}=await db.from('entries').delete().eq('id',id);if(!error)entries=entries.filter(e=>e.id!==id)}
 function setStatus(m,ok){const s=document.getElementById('status');s.textContent=m;s.className='status '+(ok?'saved':'error')}
 async function loadBodyweight(){const{data}=await db.from('bodyweight').select('*').order('date',{ascending:true});bwEntries=data||[]}
 async function loadLibrary(){const[p,v]=await Promise.all([db.from('playlists').select('*').order('created_at',{ascending:true}),db.from('playlist_videos').select('*').order('sort_order',{ascending:true})]);playlists=p.data||[];videos=v.data||[];renderLibrary()}
@@ -607,7 +542,7 @@ async function loadLibrary(){const[p,v]=await Promise.all([db.from('playlists').
 function showToast(msg){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
 
 // ==== PR CHECK ====
-function checkPR(ne){const exKey=normaliseExerciseKey(ne.exercise);const ex=normaliseExerciseName(ne.exercise);const prev=entries.filter(e=>normaliseExerciseKey(e.exercise)===exKey&&e.id!==ne.id);if(!prev.length)return;const tr=e=>(e.reps||0)*(e.sets||1);const vol=e=>tr(e)*Math.max(e.weight||1,1);const prs=[];if(tr(ne)>Math.max(...prev.map(tr))&&tr(ne)>0)prs.push(tr(ne)+' total reps');if(vol(ne)>Math.max(...prev.map(vol))&&vol(ne)>0)prs.push('volume: '+vol(ne).toLocaleString());if((ne.duration||0)>Math.max(...prev.map(e=>e.duration||0))&&ne.duration>0)prs.push(ne.duration+' min');if((ne.distance||0)>Math.max(...prev.map(e=>e.distance||0))&&ne.distance>0)prs.push(ne.distance+' km');if(prs.length)showToast('🏆 New PR! '+ex+' — '+prs.join(', '))}
+function checkPR(ne){const ex=ne.exercise;const prev=entries.filter(e=>e.exercise===ex&&e.id!==ne.id);if(!prev.length)return;const tr=e=>(e.reps||0)*(e.sets||1);const vol=e=>tr(e)*Math.max(e.weight||1,1);const prs=[];if(tr(ne)>Math.max(...prev.map(tr))&&tr(ne)>0)prs.push(tr(ne)+' total reps');if(vol(ne)>Math.max(...prev.map(vol))&&vol(ne)>0)prs.push('volume: '+vol(ne).toLocaleString());if((ne.duration||0)>Math.max(...prev.map(e=>e.duration||0))&&ne.duration>0)prs.push(ne.duration+' min');if((ne.distance||0)>Math.max(...prev.map(e=>e.distance||0))&&ne.distance>0)prs.push(ne.distance+' km');if(prs.length)showToast('🏆 New PR! '+ex+' — '+prs.join(', '))}
 
 // ==== SETTINGS MENU ====
 document.getElementById('settingsBtn').addEventListener('click',e=>{e.stopPropagation();const m=document.getElementById('settingsMenu');const b=document.getElementById('settingsBtn');m.classList.toggle('open');b.classList.toggle('open')});
@@ -624,7 +559,7 @@ document.getElementById('importFile').addEventListener('change',async ev=>{
     const plMap={};
     if(json.playlists?.length)for(const pl of json.playlists){const old=pl.id;const{data,error}=await db.from('playlists').insert({name:pl.name,icon:pl.icon||'fa-solid fa-play'}).select().single();if(!error&&data){plMap[old]=data.id;counts.playlists++}}
     if(json.videos?.length)for(const v of json.videos){const nid=plMap[v.playlist_id];if(!nid)continue;const{error}=await db.from('playlist_videos').insert({playlist_id:nid,title:v.title,url:v.url,platform:v.platform||'youtube',notes:v.notes||null,sort_order:v.sort_order||0});if(!error)counts.videos++}
-    if(json.entries?.length)for(const e of json.entries){const clean=normaliseEntryShape(e);const{error}=await db.from('entries').insert({exercise:clean.exercise,date:clean.date,reps:clean.reps||0,sets:clean.sets||1,weight:clean.weight||0,duration:clean.duration||0,distance:clean.distance||0,notes:clean.notes||null});if(!error)counts.entries++}
+    if(json.entries?.length)for(const e of json.entries){const{error}=await db.from('entries').insert({exercise:e.exercise,date:e.date,reps:e.reps||0,sets:e.sets||1,weight:e.weight||0,duration:e.duration||0,distance:e.distance||0,notes:e.notes||null});if(!error)counts.entries++}
     if(json.bodyweight?.length)for(const b of json.bodyweight){const{error}=await db.from('bodyweight').insert({date:b.date,weight:b.weight});if(!error)counts.bodyweight++}
     showToast(`Imported: ${counts.entries} entries, ${counts.playlists} playlists, ${counts.videos} videos, ${counts.bodyweight} weigh-ins`);
     setTimeout(()=>location.reload(),1500);
@@ -645,36 +580,7 @@ document.getElementById('clearConfirm').addEventListener('click',async()=>{
 
 // ==== FORM: ENTRY ====
 document.getElementById('date').value=new Date().toISOString().slice(0,10);
-document.getElementById('exercise').addEventListener('blur',updateExerciseInputFormatting);
-document.getElementById('exercise').addEventListener('change',updateExerciseInputFormatting);
-document.getElementById('exercise').addEventListener('input',e=>{
-  const start=e.target.selectionStart;
-  const formatted=e.target.value.replace(/\s{2,}/g,' ');
-  if(formatted!==e.target.value){e.target.value=formatted;e.target.setSelectionRange(start-1,start-1)}
-});
-document.getElementById('exercise').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('addBtn').click()}});
-document.getElementById('addBtn').addEventListener('click',async()=>{
-  if(isSavingEntry)return;
-  const exercise=normaliseExerciseName(document.getElementById('exercise').value);
-  const date=document.getElementById('date').value;
-  if(!exercise||!date){setStatus('Enter exercise + date',false);return}
-  document.getElementById('exercise').value=exercise;
-  const entry={exercise,date,reps:+document.getElementById('reps').value||0,sets:+document.getElementById('sets').value||1,weight:+document.getElementById('weight').value||0,duration:+document.getElementById('duration').value||0,distance:+document.getElementById('distance').value||0,notes:document.getElementById('notes').value.trim()||null};
-  isSavingEntry=true;
-  setAddButtonState(true);
-  try{
-    const saved=await addEntry(entry);
-    if(saved){
-      checkPR(saved);
-      document.getElementById('exercise').value='';
-      ['reps','sets','weight','duration','distance','notes'].forEach(id=>document.getElementById(id).value='');
-      render();
-    }
-  }finally{
-    isSavingEntry=false;
-    setAddButtonState(false);
-  }
-});
+document.getElementById('addBtn').addEventListener('click',async()=>{const exercise=document.getElementById('exercise').value.trim();const date=document.getElementById('date').value;if(!exercise||!date){setStatus('Enter exercise + date',false);return}const entry={exercise,date,reps:+document.getElementById('reps').value||0,sets:+document.getElementById('sets').value||1,weight:+document.getElementById('weight').value||0,duration:+document.getElementById('duration').value||0,distance:+document.getElementById('distance').value||0,notes:document.getElementById('notes').value.trim()||null};const saved=await addEntry(entry);if(saved){checkPR(saved);['reps','sets','weight','duration','distance','notes'].forEach(id=>document.getElementById(id).value='');render()}});
 
 // ==== FORM: BODYWEIGHT ====
 document.getElementById('bwDate').value=new Date().toISOString().slice(0,10);
@@ -690,24 +596,30 @@ function platformIcon(p){switch(p){case'youtube':return{cls:'yt',icon:'fa-brands
 function getMetricValue(e,m){switch(m){case'volume':return(e.reps||0)*(e.sets||1)*Math.max(e.weight||1,1);case'reps':return(e.reps||0)*(e.sets||1);case'weight':return e.weight||0;case'duration':return e.duration||0;case'distance':return e.distance||0}}
 
 // ==== RENDER: KPIs ====
-function renderKPIs(){const k=document.getElementById('kpis'),sessionDays=new Set(entries.map(e=>e.date)).size,unique=new Set(entries.map(e=>normaliseExerciseKey(e.exercise))).size;const days=new Set(entries.map(e=>e.date));let streak=0,d=new Date();while(days.has(d.toISOString().slice(0,10))){streak++;d.setDate(d.getDate()-1)}const now=new Date(),wa=new Date(now);wa.setDate(now.getDate()-7);const twa=new Date(now);twa.setDate(now.getDate()-14);const tw=entries.filter(e=>new Date(e.date)>=wa).reduce((s,e)=>s+getMetricValue(e,'volume'),0);const lw=entries.filter(e=>{const d=new Date(e.date);return d>=twa&&d<wa}).reduce((s,e)=>s+getMetricValue(e,'volume'),0);const delta=lw>0?((tw-lw)/lw*100):(tw>0?100:0);let dc='',di='fa-minus';if(Math.abs(delta)<.5){dc='';di='fa-minus'}else if(delta>0){dc='up';di='fa-arrow-up'}else{dc='down';di='fa-arrow-down'}
-k.innerHTML=`<div class="kpi"><div class="lbl"><i class="fa-solid fa-calendar-check"></i>Sessions</div><div class="val">${sessionDays.toLocaleString()}</div><div class="sub">Distinct days trained</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-shapes"></i>Exercises</div><div class="val">${unique}</div><div class="sub">Unique types</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-fire"></i>Streak</div><div class="val">${streak}<em>day${streak===1?'':'s'}</em></div><div class="sub ${streak>0?'up':''}">${streak>0?'Active':'Start today'}</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-chart-column"></i>Week Volume</div><div class="val">${Math.round(tw).toLocaleString()}</div><div class="sub ${dc}"><i class="fa-solid ${di}"></i> ${Math.abs(delta).toFixed(0)}% vs last week</div></div>`}
+function renderKPIs(){const k=document.getElementById('kpis'),sessionDays=new Set(entries.map(e=>e.date)).size,unique=new Set(entries.map(e=>e.exercise)).size;const days=new Set(entries.map(e=>e.date));
+let streak=0,d=new Date();
+if(!days.has(d.toISOString().slice(0,10))){d.setDate(d.getDate()-1)}
+while(days.has(d.toISOString().slice(0,10))){streak++;d.setDate(d.getDate()-1)}
+const sortedDays=[...days].sort();let maxStreak=0,runStreak=0;
+for(let i=0;i<sortedDays.length;i++){if(i===0){runStreak=1}else{const diff=Math.round((new Date(sortedDays[i])-new Date(sortedDays[i-1]))/86400000);runStreak=diff===1?runStreak+1:1}if(runStreak>maxStreak)maxStreak=runStreak}
+const now=new Date(),wa=new Date(now);wa.setDate(now.getDate()-7);const twa=new Date(now);twa.setDate(now.getDate()-14);const tw=entries.filter(e=>new Date(e.date)>=wa).reduce((s,e)=>s+getMetricValue(e,'volume'),0);const lw=entries.filter(e=>{const d=new Date(e.date);return d>=twa&&d<wa}).reduce((s,e)=>s+getMetricValue(e,'volume'),0);const delta=lw>0?((tw-lw)/lw*100):(tw>0?100:0);let dc='',di='fa-minus';if(Math.abs(delta)<.5){dc='';di='fa-minus'}else if(delta>0){dc='up';di='fa-arrow-up'}else{dc='down';di='fa-arrow-down'}
+k.innerHTML=`<div class="kpi"><div class="lbl"><i class="fa-solid fa-calendar-check"></i>Sessions</div><div class="val">${sessionDays.toLocaleString()}</div><div class="sub">Distinct days trained</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-shapes"></i>Exercises</div><div class="val">${unique}</div><div class="sub">Unique types</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-fire"></i>Streak</div><div class="val">${streak}<em>day${streak===1?'':'s'}</em></div><div class="sub ${streak>0?'up':''}"><i class="fa-solid fa-trophy" style="color:var(--amber);margin-right:2px"></i> Best: ${maxStreak} day${maxStreak===1?'':'s'}</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-chart-column"></i>Week Volume</div><div class="val">${Math.round(tw).toLocaleString()}</div><div class="sub ${dc}"><i class="fa-solid ${di}"></i> ${Math.abs(delta).toFixed(0)}% vs last week</div></div>`}
 
 // ==== RENDER: EXERCISE TABS (scrollable) ====
-function renderExerciseTabs(){const t=document.getElementById('exerciseTabs');const search=document.getElementById('exerciseSearch').value.toLowerCase();let exs=['All',...new Map(entries.map(e=>[normaliseExerciseKey(e.exercise),normaliseExerciseName(e.exercise)])).values()];if(search)exs=exs.filter(ex=>ex.toLowerCase().includes(search));if(currentExercise!=='All'&&!exs.includes(currentExercise))currentExercise='All';t.innerHTML=exs.map(ex=>`<button class="chip ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</button>`).join('');t.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{currentExercise=c.dataset.ex;renderChart();renderLog();renderExerciseTabs()}))}
+function renderExerciseTabs(){const t=document.getElementById('exerciseTabs');const search=document.getElementById('exerciseSearch').value.toLowerCase();let exs=['All',...new Set(entries.map(e=>e.exercise))];if(search)exs=exs.filter(ex=>ex.toLowerCase().includes(search));t.innerHTML=exs.map(ex=>`<button class="chip ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</button>`).join('');t.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{currentExercise=c.dataset.ex;renderChart();renderLog();renderExerciseTabs()}))}
 document.getElementById('exerciseSearch').addEventListener('input',()=>renderExerciseTabs());
 
 // ==== RENDER: CHART ====
-function renderChart(){const f=currentExercise==='All'?entries:entries.filter(e=>normaliseExerciseKey(e.exercise)===normaliseExerciseKey(currentExercise));const bd={};f.forEach(e=>{bd[e.date]=(bd[e.date]||0)+getMetricValue(e,currentMetric)});const dates=Object.keys(bd).sort(),vals=dates.map(d=>bd[d]);if(chart)chart.destroy();chart=new Chart(document.getElementById('chart').getContext('2d'),{type:'line',data:{labels:dates,datasets:[{data:vals,borderColor:'#7363ff',backgroundColor:c=>{const g=c.chart.ctx.createLinearGradient(0,0,0,320);g.addColorStop(0,'rgba(115,99,255,.35)');g.addColorStop(1,'rgba(115,99,255,0)');return g},fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:'#7363ff',pointBorderColor:'#0a0a0a',pointBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#222',titleColor:'#f5f5f5',bodyColor:'#d5d5d5',borderColor:'#7363ff',borderWidth:1,padding:12,cornerRadius:6,displayColors:false}},scales:{x:{ticks:{color:'#888',font:{family:'Poppins',size:10}},grid:{display:false},border:{color:'#333'}},y:{ticks:{color:'#888',font:{family:'Poppins',size:10}},grid:{color:'#222'},border:{display:false},beginAtZero:true}}}})}
+function renderChart(){const f=currentExercise==='All'?entries:entries.filter(e=>e.exercise===currentExercise);const bd={};f.forEach(e=>{bd[e.date]=(bd[e.date]||0)+getMetricValue(e,currentMetric)});const dates=Object.keys(bd).sort(),vals=dates.map(d=>bd[d]);if(chart)chart.destroy();chart=new Chart(document.getElementById('chart').getContext('2d'),{type:'line',data:{labels:dates,datasets:[{data:vals,borderColor:'#7363ff',backgroundColor:c=>{const g=c.chart.ctx.createLinearGradient(0,0,0,320);g.addColorStop(0,'rgba(115,99,255,.35)');g.addColorStop(1,'rgba(115,99,255,0)');return g},fill:true,tension:.35,borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBackgroundColor:'#7363ff',pointBorderColor:'#0a0a0a',pointBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#222',titleColor:'#f5f5f5',bodyColor:'#d5d5d5',borderColor:'#7363ff',borderWidth:1,padding:12,cornerRadius:6,displayColors:false}},scales:{x:{ticks:{color:'#888',font:{family:'Poppins',size:10}},grid:{display:false},border:{color:'#333'}},y:{ticks:{color:'#888',font:{family:'Poppins',size:10}},grid:{color:'#222'},border:{display:false},beginAtZero:true}}}})}
 
 // ==== RENDER: PERSONAL BESTS (slider + search) ====
 function renderPRs(){
   const grid=document.getElementById('prGrid');
-  let exercises=[...new Map(entries.map(e=>[normaliseExerciseKey(e.exercise),normaliseExerciseName(e.exercise)])).values()];
+  let exercises=[...new Set(entries.map(e=>e.exercise))];
   if(prSearchTerm)exercises=exercises.filter(ex=>ex.toLowerCase().includes(prSearchTerm.toLowerCase()));
   if(!exercises.length){grid.innerHTML=prSearchTerm?'<div class="empty" style="min-width:100%"><b>No matches</b>Try a different search term</div>':'<div class="empty" style="min-width:100%"><i class="fa-solid fa-trophy"></i><b>No records yet</b>Log workouts to start tracking personal bests</div>';return}
   grid.innerHTML=exercises.map(ex=>{
-    const exE=entries.filter(e=>normaliseExerciseKey(e.exercise)===normaliseExerciseKey(ex));const tr=e=>(e.reps||0)*(e.sets||1);const vol=e=>tr(e)*Math.max(e.weight||1,1);const prs=[];
+    const exE=entries.filter(e=>e.exercise===ex);const tr=e=>(e.reps||0)*(e.sets||1);const vol=e=>tr(e)*Math.max(e.weight||1,1);const prs=[];
     const bR=exE.reduce((b,e)=>tr(e)>tr(b)?e:b,exE[0]);if(tr(bR)>0)prs.push({lbl:'Most Reps',val:tr(bR).toLocaleString(),date:bR.date});
     const bV=exE.reduce((b,e)=>vol(e)>vol(b)?e:b,exE[0]);if(bV.weight>0)prs.push({lbl:'Best Volume',val:vol(bV).toLocaleString(),date:bV.date});
     const bW=exE.reduce((b,e)=>(e.weight||0)>(b.weight||0)?e:b,exE[0]);if(bW.weight>0)prs.push({lbl:'Heaviest Weight',val:bW.weight+' kg',date:bW.date});
@@ -729,7 +641,7 @@ function renderBodyweight(){const dates=bwEntries.map(e=>e.date),vals=bwEntries.
 const list=document.getElementById('bwList');const sorted=[...bwEntries].reverse().slice(0,15);if(!sorted.length){list.innerHTML='';return}list.innerHTML=`<table><thead><tr><th>Date</th><th class="n">Weight</th><th></th></tr></thead><tbody>${sorted.map(e=>`<tr><td>${e.date}</td><td class="n"><b>${e.weight} kg</b></td><td class="n"><button class="del-btn" data-bwid="${e.id}"><i class="fa-solid fa-xmark"></i></button></td></tr>`).join('')}</tbody></table>`;list.querySelectorAll('[data-bwid]').forEach(b=>b.addEventListener('click',async()=>{await db.from('bodyweight').delete().eq('id',+b.dataset.bwid);bwEntries=bwEntries.filter(e=>e.id!==+b.dataset.bwid);renderBodyweight()}))}
 
 // ==== RENDER: LOG ====
-function renderLog(){const list=document.getElementById('logList');const f=currentExercise==='All'?entries:entries.filter(e=>normaliseExerciseKey(e.exercise)===normaliseExerciseKey(currentExercise));const sorted=[...f].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,30);if(!sorted.length){list.innerHTML='<div class="empty"><i class="fa-solid fa-chart-simple"></i><b>No data yet</b>Log your first workout</div>';return}list.innerHTML=`<table><thead><tr><th>Exercise</th><th>Date</th><th class="n">Reps</th><th class="n">Sets</th><th class="n">Weight</th><th class="n">Dur</th><th class="n">Dist</th><th></th></tr></thead><tbody>${sorted.map(e=>`<tr><td><b>${e.exercise}</b>${e.notes?'<div style="font-size:9px;color:var(--text-muted);margin-top:2px">'+e.notes+'</div>':''}</td><td>${e.date}</td><td class="n">${e.reps||'—'}</td><td class="n">${e.sets||'—'}</td><td class="n">${e.weight?e.weight+' kg':'—'}</td><td class="n">${e.duration?e.duration+' m':'—'}</td><td class="n">${e.distance?e.distance+' km':'—'}</td><td class="n"><button class="del-btn" data-id="${e.id}"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')}</tbody></table>`;list.querySelectorAll('.del-btn').forEach(b=>b.addEventListener('click',async()=>{await deleteEntry(+b.dataset.id);render()}))}
+function renderLog(){const list=document.getElementById('logList');const f=currentExercise==='All'?entries:entries.filter(e=>e.exercise===currentExercise);const sorted=[...f].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,30);if(!sorted.length){list.innerHTML='<div class="empty"><i class="fa-solid fa-chart-simple"></i><b>No data yet</b>Log your first workout</div>';return}list.innerHTML=`<table><thead><tr><th>Exercise</th><th>Date</th><th class="n">Reps</th><th class="n">Sets</th><th class="n">Weight</th><th class="n">Dur</th><th class="n">Dist</th><th></th></tr></thead><tbody>${sorted.map(e=>`<tr><td><b>${e.exercise}</b>${e.notes?'<div style="font-size:9px;color:var(--text-muted);margin-top:2px">'+e.notes+'</div>':''}</td><td>${e.date}</td><td class="n">${e.reps||'—'}</td><td class="n">${e.sets||'—'}</td><td class="n">${e.weight?e.weight+' kg':'—'}</td><td class="n">${e.duration?e.duration+' m':'—'}</td><td class="n">${e.distance?e.distance+' km':'—'}</td><td class="n"><button class="del-btn" data-id="${e.id}"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')}</tbody></table>`;list.querySelectorAll('.del-btn').forEach(b=>b.addEventListener('click',async()=>{await deleteEntry(+b.dataset.id);render()}))}
 
 // ==== RENDER: LIBRARY ====
 function renderLibrary(){const sel=document.getElementById('vidPlaylist');sel.innerHTML=playlists.length===0?'<option value="">Create a playlist first</option>':playlists.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');const grid=document.getElementById('playlistGrid');if(!playlists.length){grid.innerHTML='<div class="empty"><i class="fa-solid fa-film"></i><b>No playlists yet</b>Create one above</div>';return}grid.innerHTML=playlists.map(pl=>{const pv=videos.filter(v=>v.playlist_id===pl.id);return`<div class="pl-card" data-plcardid="${pl.id}"><button class="pl-toggle" data-pltoggle="${pl.id}"><div class="pl-title"><i class="${pl.icon}"></i> ${pl.name}</div><div class="pl-right"><span class="pl-count">${pv.length} video${pv.length===1?'':'s'}</span><i class="fa-solid fa-chevron-down pl-arrow"></i></div></button><div class="pl-collapse"><div class="pl-scroll">${pv.length===0?'<div class="pl-empty">No videos yet</div>':pv.map(v=>{const pi=platformIcon(v.platform);return`<div class="vid-item"><div class="vid-icon ${pi.cls}"><i class="${pi.icon}"></i></div><div class="vid-info"><a href="${v.url}" target="_blank" rel="noopener">${v.title}</a>${v.notes?`<div class="vid-notes">${v.notes}</div>`:''}</div><div class="vid-actions"><button class="del-btn" data-vidid="${v.id}"><i class="fa-solid fa-xmark"></i></button></div></div>`}).join('')}</div><div style="padding:8px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end"><button class="del-btn pl-del" data-plid="${pl.id}" style="font-size:10px;display:flex;align-items:center;gap:4px"><i class="fa-solid fa-trash"></i> Delete playlist</button></div></div></div>`}).join('');
@@ -745,94 +657,54 @@ document.getElementById('calToggleBtn').addEventListener('click',()=>{
 });
 function renderCalendar(){
   const activeDays={};
-  const datedEntries=entries.filter(e=>e.date).sort((a,b)=>a.date.localeCompare(b.date));
-  datedEntries.forEach(e=>{activeDays[e.date]=(activeDays[e.date]||0)+1});
-
-  const now=new Date();
-  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  const currentMonthKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-  const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  if(!datedEntries.length){
-    document.getElementById('calGrid').innerHTML=`<div class="empty" style="min-width:260px"><i class="fa-solid fa-calendar-days"></i><b>No workout data yet</b>Log an entry to build your calendar</div>`;
-    document.getElementById('calStats').innerHTML=`
-      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--green)">0</div><div class="cal-stat-lbl">Days exercised</div></div>
-      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">0</div><div class="cal-stat-lbl">Days not exercised</div></div>
-      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--accent)">0</div><div class="cal-stat-lbl">Not elapsed</div></div>
-      <div class="cal-stat"><div class="cal-stat-val" style="color:var(--blue)">0%</div><div class="cal-stat-lbl">Tracked period</div></div>`;
+  entries.forEach(e=>{activeDays[e.date]=(activeDays[e.date]||0)+1});
+  const activeDates=Object.keys(activeDays).sort();
+  if(!activeDates.length){
+    document.getElementById('calStats').innerHTML='<div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">—</div><div class="cal-stat-lbl">No data yet</div></div>';
+    document.getElementById('calGrid').innerHTML='';
     return;
   }
-
-  const firstTrackedDate=new Date(`${datedEntries[0].date}T00:00:00`);
-  const startYear=firstTrackedDate.getFullYear();
-  const startMonth=firstTrackedDate.getMonth();
-  const endYear=today.getFullYear();
-  const endMonth=today.getMonth();
-
-  let trainedDays=0,restDays=0,futureDays=0,trackedElapsedDays=0;
-  const monthBlocks=[];
-
-  for(let year=startYear,month=startMonth;year<endYear || (year===endYear && month<=endMonth);){
-    const daysInMonth=new Date(year,month+1,0).getDate();
-    const monthKey=`${year}-${String(month+1).padStart(2,'0')}`;
-    const monthEntries=datedEntries.filter(e=>e.date.startsWith(monthKey));
-    const firstTrackedInMonth=monthEntries.length?monthEntries[0].date:null;
-
-    let firstVisibleDay=1;
-    if(firstTrackedInMonth){
-      firstVisibleDay=Number(firstTrackedInMonth.slice(-2));
-    }else if(monthKey===currentMonthKey){
-      firstVisibleDay=1;
-    }
-
-    const firstVisibleDow=new Date(year,month,firstVisibleDay).getDay();
-
-    let cells='';
-    for(let b=0;b<firstVisibleDow;b++)cells+=`<div class="cal-day empty"></div>`;
-
-    for(let day=firstVisibleDay;day<=daysInMonth;day++){
-      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const count=activeDays[ds]||0;
-      let cls='rest';
-      let label='Not exercised';
-      let includeInStats=false;
-
-      if(ds>todayStr){
-        cls='future';
-        label='Not elapsed';
-        futureDays++;
-      }else if(monthKey===currentMonthKey && firstTrackedInMonth===null){
-        cls='empty';
-        label='No logged workouts this month yet';
-      }else if(count>0){
-        cls='trained';
-        label=`Exercised (${count} entr${count===1?'y':'ies'})`;
-        trainedDays++;
-        includeInStats=true;
-      }else{
-        restDays++;
-        includeInStats=true;
-      }
-
-      if(includeInStats)trackedElapsedDays++;
-      cells+=`<div class="cal-day ${cls}" title="${ds}: ${label}"></div>`;
-    }
-
-    monthBlocks.push(`<div class="cal-month"><div class="cal-month-label">${monthNames[month]} ${year}</div><div class="cal-grid">${cells}</div></div>`);
-
-    month++;
-    if(month>11){month=0;year++}
+  // Range: from first entry month to current month
+  const firstDate=new Date(activeDates[0]);
+  const now=new Date();
+  const today=now.toISOString().slice(0,10);
+  const months=[];
+  let cursor=new Date(firstDate.getFullYear(),firstDate.getMonth(),1);
+  while(cursor<=now){
+    months.push({year:cursor.getFullYear(),month:cursor.getMonth()});
+    cursor.setMonth(cursor.getMonth()+1);
   }
+  const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Count only days from first entry to today
+  const startDate=new Date(activeDates[0]);
+  const msPerDay=86400000;
+  const totalDays=Math.floor((now-startDate)/msPerDay)+1;
+  const totalActive=new Set(activeDates.filter(d=>d<=today)).size;
+  const restDays=totalDays-totalActive;
+  const pct=totalDays>0?Math.round(totalActive/totalDays*100):0;
 
-  const pct=trackedElapsedDays>0?Math.round((trainedDays/trackedElapsedDays)*100):0;
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML=months.map(({year,month})=>{
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const firstDow=new Date(year,month,1).getDay();
+    let cells='';
+    for(let b=0;b<firstDow;b++)cells+=`<div class="cal-day empty"></div>`;
+    for(let day=1;day<=daysInMonth;day++){
+      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      if(ds>today){cells+=`<div class="cal-day empty"></div>`;continue}
+      const count=activeDays[ds]||0;
+      let lvl='';
+      if(count>=4)lvl='l4';else if(count>=3)lvl='l3';else if(count>=2)lvl='l2';else if(count>=1)lvl='l1';
+      cells+=`<div class="cal-day ${lvl}" title="${ds}: ${count} exercise${count===1?'':'s'}"></div>`;
+    }
+    return`<div class="cal-month"><div class="cal-month-label">${monthNames[month]} ${year}</div><div class="cal-grid">${cells}</div></div>`;
+  }).join('');
 
-  document.getElementById('calGrid').innerHTML=monthBlocks.join('');
   document.getElementById('calStats').innerHTML=`
-    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--green)">${trainedDays}</div><div class="cal-stat-lbl">Days exercised</div></div>
-    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">${restDays}</div><div class="cal-stat-lbl">Days not exercised</div></div>
-    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--accent)">${futureDays}</div><div class="cal-stat-lbl">Not elapsed</div></div>
-    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--blue)">${pct}%</div><div class="cal-stat-lbl">Tracked period</div></div>`;
+    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--green)">${totalActive}</div><div class="cal-stat-lbl">Days trained</div></div>
+    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--text-muted)">${restDays}</div><div class="cal-stat-lbl">Rest days</div></div>
+    <div class="cal-stat"><div class="cal-stat-val" style="color:var(--accent)">${pct}%</div><div class="cal-stat-lbl">Consistency</div></div>`;
+  grid.scrollLeft=grid.scrollWidth;
 }
 
 // ==== TABS & NAV ====
@@ -843,7 +715,7 @@ document.querySelectorAll('.sidebar-nav a').forEach(a=>a.addEventListener('click
 document.getElementById('menuBtn').addEventListener('click',()=>{const s=document.getElementById('sidebar');s.classList.toggle('open');document.getElementById('overlay').style.display=s.classList.contains('open')?'block':'none'});
 document.getElementById('overlay').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none'});
 
-function render(){refreshExerciseSuggestions();renderKPIs();renderExerciseTabs();renderChart();renderPRs();renderInsights();renderBodyweight();renderLog()}
+function render(){renderKPIs();renderExerciseTabs();renderChart();renderPRs();renderInsights();renderBodyweight();renderLog()}
 checkAuth();
 </script>
 </body>

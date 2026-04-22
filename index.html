@@ -537,13 +537,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
               <div class="status" id="mplStatus"></div>
             </div>
             <div class="panel" style="border:1px solid var(--border)">
-              <div class="ph"><h3><i class="fa-solid fa-music" style="color:var(--accent);margin-right:6px"></i>Add track</h3></div>
-              <div class="desc">GitHub Pages, Google Drive, or Dropbox</div>
+              <div class="ph"><h3><i class="fa-solid fa-music" style="color:var(--accent);margin-right:6px"></i>Add tracks</h3></div>
+              <div class="desc">One URL per line — names taken from filenames</div>
               <div class="field"><label>Playlist</label><select id="mtrPlaylist"></select></div>
-              <div class="field"><label>MP3 URL</label><input type="url" id="mtrUrl" placeholder="Paste link from GitHub / Drive / Dropbox"></div>
-              <div class="field"><label>Title</label><input type="text" id="mtrTitle" placeholder="e.g. Eye of the Tiger"></div>
-              <div class="field"><label>Artist</label><input type="text" id="mtrArtist" placeholder="e.g. Survivor"></div>
-              <button class="btn primary" id="addMtrBtn" style="width:100%;justify-content:center"><i class="fa-solid fa-plus"></i> Add track</button>
+              <div class="field"><label>URLs</label><textarea id="mtrUrls" rows="5" placeholder="https://yourdomain.com/music/song-one.mp3&#10;https://yourdomain.com/music/song-two.mp3" style="width:100%;padding:10px 12px;background:var(--bg-card2);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);outline:none;font-family:inherit;font-size:12px;resize:vertical;line-height:1.6;transition:.2s"></textarea></div>
+              <button class="btn primary" id="addMtrBtn" style="width:100%;justify-content:center"><i class="fa-solid fa-plus"></i> Add tracks</button>
               <div class="status" id="mtrStatus"></div>
             </div>
           </div>
@@ -915,18 +913,29 @@ document.getElementById('addMplBtn').addEventListener('click',async()=>{
   if(error){st.textContent='Error';st.className='status error';return}
   mPlaylists.push(data);document.getElementById('mplName').value='';st.textContent='Created ✓';st.className='status saved';renderMusic();
 });
+function titleFromUrl(url){
+  try{const raw=decodeURIComponent(url.split('?')[0].split('/').pop()||'');return raw.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim()||url;}
+  catch(e){return url}
+}
 document.getElementById('addMtrBtn').addEventListener('click',async()=>{
   const playlist_id=+document.getElementById('mtrPlaylist').value;
-  const url=document.getElementById('mtrUrl').value.trim();
-  const title=document.getElementById('mtrTitle').value.trim();
-  const artist=document.getElementById('mtrArtist').value.trim()||null;
+  const raw=document.getElementById('mtrUrls').value;
+  const urls=raw.split('\n').map(u=>u.trim()).filter(u=>u.length>0);
   const st=document.getElementById('mtrStatus');
-  if(!playlist_id||!url||!title){st.textContent='Fill playlist, URL & title';st.className='status error';return}
-  const sort_order=mTracks.filter(t=>t.playlist_id===playlist_id).length;
-  const{data,error}=await db.from('music_tracks').insert({playlist_id,url,title,artist,sort_order}).select().single();
-  if(error){st.textContent='Error: '+error.message;st.className='status error';return}
-  mTracks.push(data);['mtrUrl','mtrTitle','mtrArtist'].forEach(id=>document.getElementById(id).value='');
-  st.textContent='Added ✓';st.className='status saved';renderMusic();
+  if(!playlist_id||!urls.length){st.textContent='Select a playlist and paste at least one URL';st.className='status error';return}
+  st.textContent='Adding...';st.className='status';
+  let base_order=mTracks.filter(t=>t.playlist_id===playlist_id).length;
+  let added=0,failed=0;
+  for(const url of urls){
+    const title=titleFromUrl(url);
+    const{data,error}=await db.from('music_tracks').insert({playlist_id,url,title,artist:null,sort_order:base_order+added}).select().single();
+    if(error){failed++;continue}
+    mTracks.push(data);added++;
+  }
+  document.getElementById('mtrUrls').value='';
+  if(failed>0){st.textContent=`Added ${added}, failed ${failed}`;st.className='status error';}
+  else{st.textContent=`Added ${added} track${added===1?'':'s'} ✓`;st.className='status saved';}
+  renderMusic();
 });
 document.getElementById('musicAccToggle').addEventListener('click',()=>document.getElementById('musicAccordion').classList.toggle('open'));
 
@@ -948,7 +957,7 @@ function renderMusic(){
       </div>
       ${tracks.length===0?'<div class="pl-empty">No tracks yet</div>':tracks.map((t,i)=>`<div class="mt-track ${mQueue[mQueueIdx]?.id===t.id&&mPlaying?'playing':''}" data-trackid="${t.id}">
         <div class="mt-num">${mQueue[mQueueIdx]?.id===t.id&&mPlaying?'<i class="fa-solid fa-volume-high"></i>':(i+1)}</div>
-        <div class="mt-tinfo"><div class="mt-tname">${t.title}</div>${t.artist?`<div class="mt-tartist">${t.artist}</div>`:''}</div>
+        <div class="mt-tinfo"><div class="mt-tname">${t.title}</div></div>
         <button class="del-btn mt-tdel" data-mtrid="${t.id}"><i class="fa-solid fa-xmark"></i></button>
       </div>`).join('')}
     </div>`;
@@ -1010,7 +1019,7 @@ function updatePlayerUI(){
   bar.classList.add('active');
   document.querySelector('.main').style.paddingBottom='84px';
   const t=mQueue[mQueueIdx];
-  if(t){document.getElementById('pbTitle').textContent=t.title;document.getElementById('pbArtist').textContent=t.artist||'Unknown artist'}
+  if(t){document.getElementById('pbTitle').textContent=t.title;document.getElementById('pbArtist').textContent=''}
   document.getElementById('pbPlay').innerHTML=mPlaying?'<i class="fa-solid fa-pause"></i>':'<i class="fa-solid fa-play"></i>';
 }
 function updateMediaSession(){

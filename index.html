@@ -788,10 +788,54 @@ function platformIcon(p){switch(p){case'youtube':return{cls:'yt',icon:'fa-brands
 function getMetricValue(e,m){switch(m){case'volume':return(e.reps||0)*(e.sets||1)*Math.max(e.weight||1,1);case'reps':return(e.reps||0)*(e.sets||1);case'weight':return e.weight||0;case'duration':return e.duration||0;case'distance':return e.distance||0}}
 
 // ==== RENDER: KPIs ====
-function renderKPIs(){const k=document.getElementById('kpis'),sessionDays=new Set(entries.map(e=>e.date)).size,unique=new Set(entries.map(e=>normaliseExerciseKey(e.exercise))).size;const days=new Set(entries.map(e=>e.date));let streak=0,d=new Date();while(days.has(d.toISOString().slice(0,10))){streak++;d.setDate(d.getDate()-1)}const now=new Date(),wa=new Date(now);wa.setDate(now.getDate()-7);const twa=new Date(now);twa.setDate(now.getDate()-14);const tw=entries.filter(e=>new Date(e.date)>=wa).reduce((s,e)=>s+getMetricValue(e,'volume'),0);const lw=entries.filter(e=>{const d=new Date(e.date);return d>=twa&&d<wa}).reduce((s,e)=>s+getMetricValue(e,'volume'),0);const delta=lw>0?((tw-lw)/lw*100):(tw>0?100:0);let dc='',di='fa-minus';if(Math.abs(delta)<.5){dc='';di='fa-minus'}else if(delta>0){dc='up';di='fa-arrow-up'}else{dc='down';di='fa-arrow-down'}
-k.innerHTML=`<div class="kpi"><div class="lbl"><i class="fa-solid fa-calendar-check"></i>Sessions</div><div class="val">${sessionDays.toLocaleString()}</div><div class="sub">Distinct days trained</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-shapes"></i>Exercises</div><div class="val">${unique}</div><div class="sub">Unique types</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-fire"></i>Streak</div><div class="val">${streak}<em>day${streak===1?'':'s'}</em></div><div class="sub ${streak>0?'up':''}">${streak>0?'Active':'Start today'}</div></div><div class="kpi"><div class="lbl"><i class="fa-solid fa-chart-column"></i>Week Volume</div><div class="val">${Math.round(tw).toLocaleString()}</div><div class="sub ${dc}"><i class="fa-solid ${di}"></i> ${Math.abs(delta).toFixed(0)}% vs last week</div></div>`}
+function renderKPIs(){
+  const k=document.getElementById('kpis');
+  const sessionDays=new Set(entries.map(e=>e.date)).size;
+  const unique=new Set(entries.map(e=>normaliseExerciseKey(e.exercise))).size;
+  const days=new Set(entries.map(e=>e.date));
 
-// ==== RENDER: EXERCISE TABS (scrollable) ====
+  // Current streak: count back from today or yesterday
+  function calcStreak(startDate){
+    let s=0,d=new Date(startDate);
+    while(days.has(d.toISOString().slice(0,10))){s++;d.setDate(d.getDate()-1)}
+    return s;
+  }
+  const todayStr=new Date().toISOString().slice(0,10);
+  const yday=new Date();yday.setDate(yday.getDate()-1);
+  const ydayStr=yday.toISOString().slice(0,10);
+  let streak=0;
+  if(days.has(todayStr)) streak=calcStreak(new Date());
+  else if(days.has(ydayStr)) streak=calcStreak(yday);
+
+  // Top streak: iterate over all sorted dates
+  let topStreak=0;
+  if(days.size>0){
+    const sorted=[...days].sort();
+    let cur=1,best=1;
+    for(let i=1;i<sorted.length;i++){
+      const prev=new Date(sorted[i-1]);prev.setDate(prev.getDate()+1);
+      if(prev.toISOString().slice(0,10)===sorted[i]){cur++;best=Math.max(best,cur);}
+      else cur=1;
+    }
+    topStreak=best;
+  }
+
+  const now=new Date(),wa=new Date(now);wa.setDate(now.getDate()-7);
+  const twa=new Date(now);twa.setDate(now.getDate()-14);
+  const tw=entries.filter(e=>new Date(e.date)>=wa).reduce((s,e)=>s+getMetricValue(e,'volume'),0);
+  const lw=entries.filter(e=>{const d=new Date(e.date);return d>=twa&&d<wa}).reduce((s,e)=>s+getMetricValue(e,'volume'),0);
+  const delta=lw>0?((tw-lw)/lw*100):(tw>0?100:0);
+  let dc='',di='fa-minus';
+  if(Math.abs(delta)<.5){dc='';di='fa-minus'}else if(delta>0){dc='up';di='fa-arrow-up'}else{dc='down';di='fa-arrow-down'}
+
+  k.innerHTML=`
+    <div class="kpi"><div class="lbl"><i class="fa-solid fa-calendar-check"></i>Sessions</div><div class="val">${sessionDays.toLocaleString()}</div><div class="sub">Distinct days trained</div></div>
+    <div class="kpi"><div class="lbl"><i class="fa-solid fa-shapes"></i>Exercises</div><div class="val">${unique}</div><div class="sub">Unique types logged</div></div>
+    <div class="kpi"><div class="lbl"><i class="fa-solid fa-fire"></i>Streak</div><div class="val">${streak}<em>day${streak===1?'':'s'}</em></div><div class="sub ${streak>0?'up':''}">${streak>0?'Active':'Start today'}<span style="margin-left:8px;color:var(--amber)"><i class="fa-solid fa-trophy" style="font-size:9px"></i> Best: ${topStreak}d</span></div></div>
+    <div class="kpi"><div class="lbl"><i class="fa-solid fa-chart-column"></i>Week Volume</div><div class="val">${Math.round(tw).toLocaleString()}</div><div class="sub ${dc}"><i class="fa-solid ${di}"></i> ${Math.abs(delta).toFixed(0)}% vs last week</div></div>`;
+}
+
+
 function renderExerciseTabs(){const t=document.getElementById('exerciseTabs');const search=document.getElementById('exerciseSearch').value.toLowerCase();let exs=['All',...new Map(entries.map(e=>[normaliseExerciseKey(e.exercise),normaliseExerciseName(e.exercise)])).values()];if(search)exs=exs.filter(ex=>ex.toLowerCase().includes(search));if(currentExercise!=='All'&&!exs.includes(currentExercise))currentExercise='All';t.innerHTML=exs.map(ex=>`<button class="chip ${ex===currentExercise?'active':''}" data-ex="${ex}">${ex}</button>`).join('');t.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{currentExercise=c.dataset.ex;renderChart();renderLog();renderExerciseTabs()}))}
 document.getElementById('exerciseSearch').addEventListener('input',()=>renderExerciseTabs());
 
